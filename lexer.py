@@ -27,8 +27,14 @@ class Lexer():
         # Object identifier
         self.lexer.add('object-identifier', r'[a-z]([a-zA-Z]|\d+|_)*')
         
+        # String literal
+        #self.lexer.add('string-literal', r'\"(regular-char|escaped-char)*\"')
+        
         
         # Operators
+        
+        # Assignment
+        self.lexer.add('assign', r'\<-')
         
         # Braces
         self.lexer.add('lbrace', r'\{')
@@ -52,14 +58,14 @@ class Lexer():
         self.lexer.add('pow', r'/^')
         
         # Boolean
+        self.lexer.add('lower-equal', r'\<=')
         self.lexer.add('equal', r'\=')
         self.lexer.add('lower', r'\<')
-        self.lexer.add('lower-equal', r'\<=')
         
-        # Assignment
-        self.lexer.add('assign', r'\<-')
         
-        # Ignore spaces
+        
+        
+        # Ignore whitespaces (spaces, horizontal tabs, line feed(new line) carriage return, form feed and vertical feed)
         self.lexer.ignore('\s+')
         
         

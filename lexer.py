@@ -28,7 +28,7 @@ class Lexer():
         self.lexer.add('object-identifier', r'[a-z]([a-zA-Z]|\d+|_)*')
         
         # String literal
-        #self.lexer.add('string-literal', r'\"(regular-char|escaped-char)*\"')
+        #self.lexer.add('string-literal', r'\"([a-zA-Z0-9 ]|escaped-char)*\"')
         
         
         # Operators
@@ -66,7 +66,11 @@ class Lexer():
         
         
         # Ignore whitespaces (spaces, horizontal tabs, line feed(new line) carriage return, form feed and vertical feed)
-        self.lexer.ignore('\s+')
+        self.lexer.ignore(r'\s+')
+        
+        # Ignore comments
+        self.lexer.ignore(r'//.*')
+        self.lexer.ignore(r'\(\*(?s).*\*\)')
         
         
     def get_lexer(self):

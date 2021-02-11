@@ -31,7 +31,7 @@ keywords = {
     }
 
 lexer = Lexer().get_lexer()
-tokens = lexer.lex('My_ass {} <-')
+tokens = lexer.lex('My_ass s : test {} <- ifthen 5 // This is a. comment (* Here is a comment. (* Valid nested comment. *) Still commented. *) ')
 
 for token in tokens:
     

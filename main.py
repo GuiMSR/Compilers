@@ -5,6 +5,7 @@ Created on Tue Feb  9 17:53:55 2021
 @author: guims
 """
 
+import sys
 from lexer import Lexer
 
 
@@ -31,7 +32,7 @@ keywords = {
     }
 
 lexer = Lexer().get_lexer()
-tokens = lexer.lex('My_ass s : test {} <- ifthen 5 // This is a. comment (* Here is a comment. (* Valid nested comment. *) Still commented. *) ')
+tokens = lexer.lex('My_ass s : test {} <- ifthen 5 // This is a. comment (* Here is a comment. (* Valid nested comment. *) Still commented. *)  "This is a string" ')
 
 for token in tokens:
     
@@ -39,7 +40,7 @@ for token in tokens:
         token.name = token.value # Replace TOKEN_CLASS by keyword
     
     if any(token.name == TOKEN_CLASS for TOKEN_CLASS in ('integer-literal', 'type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
-        print("{0},{1},{2},{3}".format(token.source_pos.lineno, token.source_pos.colno, token.name, token.value))
+        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, token.value))
     
     else:
-        print("{0},{1},{2}".format(token.source_pos.lineno, token.source_pos.colno, token.name))
+        sys.stdout.write("{0},{1},{2}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name))

@@ -8,7 +8,6 @@ Created on Tue Feb  9 16:04:25 2021
 
 from rply import LexerGenerator
 
-
 class Lexer():
     
     def __init__(self):
@@ -28,7 +27,12 @@ class Lexer():
         self.lexer.add('object-identifier', r'[a-z]([a-zA-Z]|\d+|_)*')
         
         # String literal
-        #self.lexer.add('string-literal', r'\"([a-zA-Z0-9 ]|escaped-char)*\"')
+        regular_char = '[a-zA-Z0-9 ]'
+        hex_digit = '[0-9a-fA-F]'
+        escape_sequence = '(b|t|n|r|\"|\\|x'+hex_digit+hex_digit+'|\n( |\t)*)'
+        escape_char = '\\'+escape_sequence
+        
+        self.lexer.add('string-literal', r'\"('+regular_char+'|'+escape_char+')*\"')
         
         
         # Operators

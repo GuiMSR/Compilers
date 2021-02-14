@@ -5,9 +5,21 @@ Created on Tue Feb  9 17:53:55 2021
 @author: guims
 """
 
+import argparse
 import sys
 from lexer import Lexer
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-lex", "-lex", dest='source_file', help="Path to the VSOP source code", required=True)
+args = parser.parse_args()
+
+text_file = open(args.source_file, "r")
+string_text = text_file.read()
+text_file.close()
+
+if len(string_text) == 0 :
+    sys.stdout.write("Source code file is empty")
 
 keywords = {
     'and': 'and',
@@ -32,7 +44,7 @@ keywords = {
     }
 
 lexer = Lexer().get_lexer()
-tokens = lexer.lex('My_ass s : test {} <- ifthen 5 // This is a. comment (* Here is a comment. (* Valid nested comment. *) Still commented. *) \r\n \"This is a string\" ')
+tokens = lexer.lex(string_text)
 
 for token in tokens:
     

@@ -18,7 +18,7 @@ class Lexer():
         
        
         # Integer literal
-        self.lexer.add('integer-literal', r'(\d+|0x[0-9a-fA-F]+)')
+        self.lexer.add('integer-literal', r'(0x[0-9a-fA-F]+|\d+)')
         
         # Type identifier
         self.lexer.add('type-identifier', r'[A-Z]([a-zA-Z]|\d+|_)*')

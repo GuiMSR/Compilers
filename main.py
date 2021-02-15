@@ -8,7 +8,7 @@ Created on Tue Feb  9 17:53:55 2021
 import argparse
 import sys
 import re
-from lexer import Lexer
+from lexer import VsopLexer
 
 
 parser = argparse.ArgumentParser()
@@ -44,24 +44,32 @@ keywords = {
     'while':'while'
     }
 
-lexer = Lexer().get_lexer()
-tokens = lexer.lex(string_text)
+vsopLexer = VsopLexer()
+lexer = vsopLexer.lexer
+lexer.input(string_text)
 
-for token in tokens:
-    
-    if token.value in keywords:
-        token.name = token.value # Replace TOKEN_CLASS by keyword
-    
-    if any(token.name == TOKEN_CLASS for TOKEN_CLASS in ('type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
-        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, token.value))
-    
-    elif token.name == 'integer-literal':
-        new_string = token.value
-        for rgx_match in ['\\', '\n']:
-            new_string = re.sub(rgx_match, '', new_string)
-        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, new_string))
-        
-        
-    
-    else:
-        sys.stdout.write("{0},{1},{2}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name))
+while True:
+	tok = lexer.token()
+	if not tok:
+		break
+	#print(tok.type, tok.value, tok.lineno, tok.lexpos)
+	tok_type = tok.type.lower().replace("_","-")
+	sys.stdout.write("{0},{1},{2},{3}\n".format(tok.lineno, tok.lexpos, tok_type, tok.value))
+#for token in lexer:
+#    
+#    if token.value in keywords:
+#        token.name = token.value # Replace TOKEN_CLASS by keyword
+#    
+#    if any(token.name == TOKEN_CLASS for TOKEN_CLASS in ('type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
+#        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, token.value))
+#    
+#    elif token.name == 'integer-literal':
+#        new_string = token.value
+#        for rgx_match in ['\\', '\n']:
+#            new_string = re.sub(rgx_match, '', new_string)
+#        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, new_string))
+#        
+#        
+#    
+#    else:
+#        sys.stdout.write("{0},{1},{2}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name))

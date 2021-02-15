@@ -7,6 +7,7 @@ Created on Tue Feb  9 17:53:55 2021
 
 import argparse
 import sys
+import re
 from lexer import Lexer
 
 
@@ -51,8 +52,16 @@ for token in tokens:
     if token.value in keywords:
         token.name = token.value # Replace TOKEN_CLASS by keyword
     
-    if any(token.name == TOKEN_CLASS for TOKEN_CLASS in ('integer-literal', 'type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
+    if any(token.name == TOKEN_CLASS for TOKEN_CLASS in ('type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
         sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, token.value))
+    
+    elif token.name == 'integer-literal':
+        new_string = token.value
+        for rgx_match in ['\\', '\n']:
+            new_string = re.sub(rgx_match, '', new_string)
+        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, new_string))
+        
+        
     
     else:
         sys.stdout.write("{0},{1},{2}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name))

@@ -6,81 +6,90 @@ Created on Tue Feb  9 16:04:25 2021
 """
 
 
-from rply import LexerGenerator
+import ply.lex as lex
 
-class Lexer():
+
+tokens = (
+    'integer-literal',
+    'type-identifier',
+    'object-identifier',
+    'string-literal',
+    'assign',
+    'lbrace',
+    'rbrace',
+    'lpar',
+    'rpar',
+    'colon',
+    'semicolon',
+    'comma',
+    'dot',
+    'plus',
+    'minus',
+    'times',
+    'div',
+    'pow',
+    'lower-equal',
+    'equal',
+    'lower'
+   )
+
+# Regular expression rules for tokens
+
+
+t_assign = r'\<-'
+
+t_lbrace = r'\{'
+t_rbrace = r'\}'
+
+t_lpar = r'\('
+t_rpar = r'\)'
+
+t_colon = r':'
+t_semicolon =  r';'
+t_comma = r','
+t_dot = r'\.'
+        
+
+t_plus = r'\+'
+t_minus = r'\-' 
+t_times =  r'\*'
+t_div = r'/'
+t_pow = r'/^'
+
+
+t_lowerequal = r'\<='
+t_equal = r'\='
+t_lower = r'\<'
+
+t_ignore = r'(\s+|//.*|\(\*(?s).*\*\))'
+
+
+def t_integer(t):
+    r'(0x[0-9a-fA-F]+|\d+)'
+    return t
+
+def t_type(t):
+    r'[A-Z]([a-zA-Z]|\d+|_)*'
+    return t
+
+def t_object(t):
+    r'[a-z]([a-zA-Z]|\d+|_)*'
+    return t
+
+def t_string(t):
+    r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*\""
+    return t
     
-    def __init__(self):
-        self.lexer = LexerGenerator()
-        
-    
-    def _add_tokens(self):
-        
-       
-        # Integer literal
-        self.lexer.add('integer-literal', r'(0x[0-9a-fA-F]+|\d+)')
-        
-        # Type identifier
-        self.lexer.add('type-identifier', r'[A-Z]([a-zA-Z]|\d+|_)*')
-        
-        # Object identifier
-        self.lexer.add('object-identifier', r'[a-z]([a-zA-Z]|\d+|_)*')
-        
-        # String literal
-#        regular_char = '[a-zA-Z0-9 ]'
-#        hex_digit = '[0-9a-fA-F]'
-#        escape_sequence = '(b|t|n|r|\"|\\|x'+hex_digit+hex_digit+'|\n( |\t)*)'
-#        escape_char = '\\'+escape_sequence
-        
-        #self.lexer.add('string-literal', r"\"("+regular_char+"|"+escape_char+")*\"")
-        self.lexer.add('string-literal', r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\n( |\t)*))*\"")
-        
-        # Operators
-        
-        # Assignment
-        self.lexer.add('assign', r'\<-')
-        
-        # Braces
-        self.lexer.add('lbrace', r'\{')
-        self.lexer.add('rbrace', r'\}')
-        
-        # Parenthesis
-        self.lexer.add('lpar', r'\(')
-        self.lexer.add('rpar', r'\)')
-        
-        # Ponctuation
-        self.lexer.add('colon', r':')
-        self.lexer.add('semicolon', r';')
-        self.lexer.add('comma', r',')
-        self.lexer.add('dot', r'\.')
-        
-        # Operations
-        self.lexer.add('plus', r'\+')
-        self.lexer.add('minus', r'\-')
-        self.lexer.add('times', r'\*')
-        self.lexer.add('div', r'/')
-        self.lexer.add('pow', r'/^')
-        
-        # Boolean
-        self.lexer.add('lower-equal', r'\<=')
-        self.lexer.add('equal', r'\=')
-        self.lexer.add('lower', r'\<')
-        
-        
-        
-        
-        # Ignore whitespaces (spaces, horizontal tabs, line feed(new line) carriage return, form feed and vertical feed)
-        self.lexer.ignore(r'\s+')
-        
-        # Ignore comments
-        self.lexer.ignore(r'//.*')
-        self.lexer.ignore(r'\(\*(?s).*\*\)')
-        
-        
-    def get_lexer(self):
-        self._add_tokens()
-        return self.lexer.build()
-        
+def t_newline(t):
+     r'\n+'
+     t.lexer.lineno += len(t.value)
+     
+def find_column(input, token):
+     line_start = input.rfind('\n', 0, token.lexpos) + 1
+     return (token.lexpos - line_start) + 1
+
+
+lexer = lex.lex()
         
         
         

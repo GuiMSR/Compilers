@@ -147,13 +147,6 @@ class VsopLexer():
         sys.stderr.write("{0}:{1}:{2}: {3} is not a valid VSOP character\n".format(self.file_name, t.lineno, colno, t.value[0]))
         t.lexer.skip(1)
 
-    def t_COMMENT_eof(self, t):
-
-        # multi-line eof error
-
-        pos = self.comment_pos.pop()
-        sys.stderr.write("{0}:{1}:{2}: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
-
 
     def t_INITIAL_comm(self,t):
         r'\(\*'
@@ -187,6 +180,14 @@ class VsopLexer():
         pass
 
     t_COMMENT_ignore = " \t"
+
+
+    def t_COMMENT_eof(self, t):
+
+        # multi-line eof error
+
+        pos = self.comment_pos.pop()
+        sys.stderr.write("{0}:{1}:{2}: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
 
 
     def t_COMMENT_error(self,t):

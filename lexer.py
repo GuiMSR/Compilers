@@ -18,9 +18,15 @@ class VsopLexer():
         self.lexer = lex.lex(module=self)
         self.file_name = file_name
         self.string_text = string_text
+        
+        # multi-line comment variables
         self.op_commentNb = 0
         self.cl_commentNb = 0
         self.comment_pos = deque()
+        
+        # string literal variables
+        self.double_quoteNB = 0
+        self.string_pos = (0,0)
 		
     def __del__(self):
         print('Lexer destructor called.')
@@ -101,6 +107,17 @@ class VsopLexer():
     def t_STRING_LITERAL(self, t):
 	    r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*\""
 	    return t
+    
+    def t_string_quote(self,t):
+        r'\"'
+        colno = self.find_column(self.string_text, t)
+        if self.double_quoteNB%2==0:
+           self.double_quoteNB +=1
+           self.string_pos = (t.lineno, colno)
+        else:
+            self.double_quoteNB +=1
+            
+    
 	    
     def t_newline(self, t):
 	     r'\n+'
@@ -115,6 +132,7 @@ class VsopLexer():
 
     def t_lineComment(self,t):
         r'(//.*\n)'
+        t.lexer.lineno += 1
         pass
     
     def t_openComment(self,t):
@@ -143,12 +161,14 @@ class VsopLexer():
     def t_eof(self, t):
         
         # multi-line eof error 
-        
         if self.op_commentNb != self.cl_commentNb:
             pos = self.comment_pos.pop()
             sys.stderr.write("{0}:{1}:{2}: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
          
-         
+        if self.double_quoteNB%2 !=0:
+            pos = self.string_pos
+            sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+            
 
         
         

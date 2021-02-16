@@ -1,9 +1,11 @@
 // This is a test file
 
-
 class MyClass {
  s : string <- "Ceci est un string"
  i : int32 <- 0x1b
 }
 
 p = 5;
+$
+
+(* This is a comment  

@@ -7,7 +7,6 @@ Created on Tue Feb  9 17:53:55 2021
 
 import argparse
 import sys
-import re
 from lexer import VsopLexer
 
 
@@ -16,6 +15,7 @@ parser.add_argument("-lex", "-lex", dest='source_file', help="Path to the VSOP s
 args = parser.parse_args()
 
 text_file = open(args.source_file, "r")
+text_file_name = text_file.name
 string_text = text_file.read()
 text_file.close()
 
@@ -44,32 +44,21 @@ keywords = {
     'while':'while'
     }
 
-vsopLexer = VsopLexer()
+vsopLexer = VsopLexer(text_file_name, string_text)
 lexer = vsopLexer.lexer
 lexer.input(string_text)
 
-while True:
-	tok = lexer.token()
-	if not tok:
-		break
-	#print(tok.type, tok.value, tok.lineno, tok.lexpos)
-	tok_type = tok.type.lower().replace("_","-")
-	sys.stdout.write("{0},{1},{2},{3}\n".format(tok.lineno, tok.lexpos, tok_type, tok.value))
-#for token in lexer:
-#    
-#    if token.value in keywords:
-#        token.name = token.value # Replace TOKEN_CLASS by keyword
-#    
-#    if any(token.name == TOKEN_CLASS for TOKEN_CLASS in ('type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
-#        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, token.value))
-#    
-#    elif token.name == 'integer-literal':
-#        new_string = token.value
-#        for rgx_match in ['\\', '\n']:
-#            new_string = re.sub(rgx_match, '', new_string)
-#        sys.stdout.write("{0},{1},{2},{3}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name, new_string))
-#        
-#        
-#    
-#    else:
-#        sys.stdout.write("{0},{1},{2}\n".format(token.source_pos.lineno, token.source_pos.colno, token.name))
+
+for token in lexer:
+    token.type = token.type.lower().replace("_","-")
+    colno = vsopLexer.find_column(string_text,token)
+    
+    
+    if token.value in keywords:
+        token.type = token.value # Replace TOKEN_CLASS by keyword
+    
+    if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal','type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
+        sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
+    
+    else:
+        sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))

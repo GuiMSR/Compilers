@@ -5,11 +5,14 @@ class MyClass {
  i : int32 <- 0x1b
 }
 
+"This is another string"
 p = 5;
 
 
-(* (* This is 
-a FREAKIN 
+(* (* This is
+a FREAKIN
 LONG
 comment
-  *) 
+  *)
+  
+0x2a+

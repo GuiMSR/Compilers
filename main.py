@@ -52,13 +52,16 @@ lexer.input(string_text)
 for token in lexer:
     token.type = token.type.lower().replace("_","-")
     colno = vsopLexer.find_column(string_text,token)
-    
-    
+
+
     if token.value in keywords:
         token.type = token.value # Replace TOKEN_CLASS by keyword
-    
-    if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal','type-identifier', 'object-identifier', 'integer-literal')):
+
+    if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
         sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
-    
+
+    elif token.type == 'integer-error':
+        sys.stderr.write("{0}:{1}:{2}: {3} is not a valid integer literal\n".format(text_file_name, token.lineno, colno, token.value))
+
     else:
         sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))

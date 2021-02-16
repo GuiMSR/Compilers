@@ -6,6 +6,10 @@ class MyClass {
 }
 
 p = 5;
-$
 
-(* This is a comment  
+
+(* (* This is 
+a FREAKIN 
+LONG
+comment
+  *) 

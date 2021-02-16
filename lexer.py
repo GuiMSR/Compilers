@@ -21,6 +21,7 @@ class VsopLexer():
         self.op_commentNb = 0
         self.cl_commentNb = 0
         self.comment_pos = deque()
+        self.lexer.begin('INITIAL')
 		
     def __del__(self):
         print('Lexer destructor called.')
@@ -52,6 +53,10 @@ class VsopLexer():
    		'COMMENTS'
    	   ]
 
+    states = (
+        ('COMMENT','exclusive'),
+    ) 
+
 # Regular expression rules for tokens
 
 
@@ -79,11 +84,7 @@ class VsopLexer():
     t_LOWER_EQUAL = r'\<='
     t_EQUAL = r'\='
     t_LOWER = r'\<'
-	
-	
-    # def t_comment_ignore(self,t):
-    #     if(self.op_commentNb > self.cl_commentNb):
-    #         pass
+
     
     def t_INTEGER_LITERAL(self, t):
 	    r'(0x[0-9a-fA-F]+|\d+)'
@@ -115,40 +116,61 @@ class VsopLexer():
 
     def t_lineComment(self,t):
         r'(//.*\n)'
+        t.lexer.lineno += 1
         pass
-    
-    def t_openComment(self,t):
-        r'\(\*'
-        colno = self.find_column(self.string_text, t)
-        self.op_commentNb+=1
-        self.comment_pos.append((t.lineno,colno))
-        pass
-    
-    def t_closeComment(self,t):
-        r'\*\)'
-        self.cl_commentNb+=1
-        self.comment_pos.pop()
-        pass
-    
-    # def t_multiComment(self,t):
-    #     r'\(\*(s+|.*)\*\)'
-    #     pass
     
     def t_error(self, t):
         colno = self.find_column(self.string_text, t)
         sys.stderr.write("{0}:{1}:{2}: {3} is not a valid VSOP character\n".format(self.file_name, t.lineno, colno, t.value[0]))
         t.lexer.skip(1)
-         
-         
-    def t_eof(self, t):
-        
+
+    def t_COMMENT_eof(self, t):
+    
         # multi-line eof error 
         
-        if self.op_commentNb != self.cl_commentNb:
-            pos = self.comment_pos.pop()
-            sys.stderr.write("{0}:{1}:{2}: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+        pos = self.comment_pos.pop()
+        sys.stderr.write("{0}:{1}:{2}: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
          
-         
+
+    def t_INITIAL_comm(self,t):
+        r'\(\*'
+        colno = self.find_column(self.string_text, t)
+        self.op_commentNb+=1
+        self.comment_pos.append((t.lineno,colno))
+        self.lexer.begin('COMMENT')
+        pass
+        
+    def t_COMMENT_end(self,t):
+        r'\*\)'
+        self.cl_commentNb+=1
+        self.comment_pos.pop()
+        if(self.op_commentNb == self.cl_commentNb):
+            self.lexer.begin('INITIAL')
+        pass
+
+    def t_COMMENT_supp(self,t):
+        r'\(\*'
+        colno = self.find_column(self.string_text, t)
+        self.op_commentNb+=1
+        self.comment_pos.append((t.lineno,colno))
+        pass
+
+    def t_COMMENT_body(self,t):
+        r'.'
+        pass
+
+    def t_COMMENT_nl(self,t):
+        r'(\n|\r|\r\n)|\s|\t'
+        pass
+
+    t_COMMENT_ignore = " \t"
+
+
+    def t_COMMENT_error(self,t):
+        r'.'
+        print("ERROR:", t.value)
+        return t
+            
 
         
         

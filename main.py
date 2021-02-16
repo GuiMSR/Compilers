@@ -57,7 +57,7 @@ for token in lexer:
     if token.value in keywords:
         token.type = token.value # Replace TOKEN_CLASS by keyword
     
-    if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal','type-identifier', 'object-identifier', 'type-identifier', 'string-literal')):
+    if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal','type-identifier', 'object-identifier', 'integer-literal')):
         sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
     
     else:

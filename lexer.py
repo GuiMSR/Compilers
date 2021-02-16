@@ -33,29 +33,30 @@ class VsopLexer():
 		
 
     tokens = [
-   	    'INTEGER_LITERAL',
-   	    'TYPE_IDENTIFIER',
-   	    'OBJECT_IDENTIFIER',
-   	    'STRING_LITERAL',
-   	    'ASSIGN',
-   	    'LBRACE',
-   	    'RBRACE',
-   	    'LPAR',
-   	    'RPAR',
-   	    'COLON',
-   	    'SEMICOLON',
-   	    'COMMA',
-   	    'DOT',
-   	    'PLUS',
-   	    'MINUS',
-   	    'TIMES',
-   	    'DIV',
-   	    'POW',
-   	    'LOWER_EQUAL',
-   	    'EQUAL',
-   	    'LOWER',
-   		'SPACES',
-   		'COMMENTS'
+        'INTEGER_LITERAL',
+        'INTEGER_ERROR',
+        'TYPE_IDENTIFIER',
+        'OBJECT_IDENTIFIER',
+        'STRING_LITERAL',
+        'ASSIGN',
+        'LBRACE',
+        'RBRACE',
+        'LPAR',
+        'RPAR',
+        'COLON',
+        'SEMICOLON',
+        'COMMA',
+        'DOT',
+        'PLUS',
+        'MINUS',
+        'TIMES',
+        'DIV',
+        'POW',
+        'LOWER_EQUAL',
+        'EQUAL',
+        'LOWER',
+        'SPACES',
+        'COMMENTS'
    	   ]
 
 # Regular expression rules for tokens
@@ -91,9 +92,14 @@ class VsopLexer():
     #     if(self.op_commentNb > self.cl_commentNb):
     #         pass
     
+    def t_INTEGER_ERROR(self,t):
+        r'0x[0-9a-fA-F]*[g-zG-Z]+[0-9g-zG-Z]*'
+        return t
+    
     def t_INTEGER_LITERAL(self, t):
 	    r'(0x[0-9a-fA-F]+|\d+)'
 	    return t
+    
 	
     def t_TYPE_IDENTIFIER(self, t):
 	    r'[A-Z]([a-zA-Z]|\d+|_)*'

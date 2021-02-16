@@ -7,3 +7,5 @@ class MyClass {
 
 "This is another string"
 p = 5;
+
+0x2a+

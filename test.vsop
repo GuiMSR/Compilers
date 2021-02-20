@@ -5,7 +5,8 @@ class MyClass {
  i : int32 <- 0x1b
 }
 
-"This is another string
+"This is another string \
+lol // lelel \xGG"
 p = 5;
 
 
@@ -13,6 +14,6 @@ p = 5;
 a FREAKIN
 LONG
 comment
-  *) 
+  *) *)
   
 0x2a+

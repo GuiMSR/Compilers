@@ -12,8 +12,10 @@ help:
 
 
 	install-tools:
+		sudo apt-get -y install python3-pip
+		python -m pip install re
 
 
 
-	vsopc: vsopc.py
-			python vsopc.py -lex $@
+	vsopc:
+		${PYTHON} vsopc.py

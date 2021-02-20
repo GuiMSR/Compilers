@@ -8,6 +8,7 @@ Created on Tue Feb  9 16:04:25 2021
 
 import ply.lex as lex
 import sys
+import re
 from collections import deque
 
 
@@ -38,7 +39,7 @@ class VsopLexer():
         'INTEGER_ERROR',
         'TYPE_IDENTIFIER',
         'OBJECT_IDENTIFIER',
-        'STRING_LITERAL',
+        'string_literal',
         'ASSIGN',
         'LBRACE',
         'RBRACE',
@@ -62,6 +63,7 @@ class VsopLexer():
 
     states = (
         ('COMMENT','exclusive'),
+        ('STRING', 'exclusive')
     )
 
 # Regular expression rules for tokens
@@ -110,42 +112,10 @@ class VsopLexer():
 	    r'[a-z]([a-zA-Z]|\d+|_)*'
 	    return t
 
-
-    def t_INITIALS_string(self,t):
-        r'\"'
-        colno = self.find_column(self.string_text, t)
-        self.double_quoteNB +=1
-        self.string_pos = (t.lineno, colno)
-        self.lexer.begin('STRING')
-        
-    def t_STRING_end(self,t):
-        r'\"'
-        colno = self.find_column(self.string_text, t)
-        self.double_quoteNB +=1
-        self.string_pos = (t.lineno, colno)
-        if(self.double_quoteNB%2==0):
-            self.lexer.begin('INITIALS')
-            
-            
-    def t_STRING_body(self,t):
-        r'([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*'
-        return t
     
-    
-    def t_STRING_eof(self,t):
-        
-        if self.double_quoteNB%2 !=0:
-            pos = self.string_pos
-            sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
-        
-    def t_STRING_error(self,t):
-        r'.'
-        print("ERROR:", t.value)
-        return t
-    
-#     def t_STRING_LITERAL(self, t):
-# 	    r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*\""
-# 	    return t
+    def t_STRING_LITERAL(self, t):
+	    r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*\""
+	    return t
 
 #     def t_string_quote(self,t):
 #         r'\"'
@@ -178,6 +148,44 @@ class VsopLexer():
         colno = self.find_column(self.string_text, t)
         sys.stderr.write("{0}:{1}:{2}: {3} is not a valid VSOP character\n".format(self.file_name, t.lineno, colno, t.value[0]))
         t.lexer.skip(1)
+
+    def t_INITIAL_string(self,t):
+        r'\"'
+        colno = self.find_column(self.string_text, t)
+        self.double_quoteNB +=1
+        self.string_pos = (t.lineno, colno)
+        self.lexer.begin('STRING')
+        
+    def t_STRING_end(self,t):
+        r'\"'
+        colno = self.find_column(self.string_text, t)
+        self.double_quoteNB +=1
+        self.string_pos = (t.lineno, colno)
+        if(self.double_quoteNB%2==0):
+            self.lexer.begin('INITIAL')
+        
+    
+
+    def t_STRING_string_literal(self,t):
+        r'((?!\\|\"|\').|(\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|([ \t])*\n)))+'
+        t.value = re.sub(r"\\([ \t])*\n", '', t.value)
+        return t
+    
+    def t_STRING_invalid(self,t):
+        r'\\((?!\").)* '
+        pos = (t.lineno, self.find_column(self.string_text, t))
+        sys.stderr.write("{0}:{1}:{2}: invalid escape sequence {3}\n".format(self.file_name, pos[0], pos[1], t.value))
+    
+    def t_STRING_eof(self,t):
+        
+        if self.double_quoteNB%2 !=0:
+            pos = self.string_pos
+            sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+        
+    def t_STRING_return(self,t):
+        r'\n'
+        pos = (t.lineno, self.find_column(self.string_text, t))
+        sys.stderr.write("{0}:{1}:{2}: raw line feed not permitted inside a string\n".format(self.file_name, pos[0], pos[1]))
 
 
     def t_INITIAL_comm(self,t):

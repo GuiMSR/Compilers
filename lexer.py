@@ -111,18 +111,50 @@ class VsopLexer():
 	    return t
 
 
-    def t_STRING_LITERAL(self, t):
-	    r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*\""
-	    return t
-
-    def t_string_quote(self,t):
+    def t_INITIALS_string(self,t):
         r'\"'
         colno = self.find_column(self.string_text, t)
-        if self.double_quoteNB%2==0:
-           self.double_quoteNB +=1
-           self.string_pos = (t.lineno, colno)
-        else:
-            self.double_quoteNB +=1
+        self.double_quoteNB +=1
+        self.string_pos = (t.lineno, colno)
+        self.lexer.begin('STRING')
+        
+    def t_STRING_end(self,t):
+        r'\"'
+        colno = self.find_column(self.string_text, t)
+        self.double_quoteNB +=1
+        self.string_pos = (t.lineno, colno)
+        if(self.double_quoteNB%2==0):
+            self.lexer.begin('INITIALS')
+            
+            
+    def t_STRING_body(self,t):
+        r'([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*'
+        return t
+    
+    
+    def t_STRING_eof(self,t):
+        
+        if self.double_quoteNB%2 !=0:
+            pos = self.string_pos
+            sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+        
+    def t_STRING_error(self,t):
+        r'.'
+        print("ERROR:", t.value)
+        return t
+    
+#     def t_STRING_LITERAL(self, t):
+# 	    r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*\""
+# 	    return t
+
+#     def t_string_quote(self,t):
+#         r'\"'
+#         colno = self.find_column(self.string_text, t)
+#         if self.double_quoteNB%2==0:
+#            self.double_quoteNB +=1
+#            self.string_pos = (t.lineno, colno)
+#         else:
+#             self.double_quoteNB +=1
 
 
 
@@ -197,8 +229,8 @@ class VsopLexer():
 
 
 
-    def t_eof(self, t):
+    # def t_eof(self, t):
 
-        if self.double_quoteNB%2 !=0:
-            pos = self.string_pos
-            sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+    #     if self.double_quoteNB%2 !=0:
+    #         pos = self.string_pos
+    #         sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))

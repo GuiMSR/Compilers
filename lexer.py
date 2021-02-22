@@ -95,7 +95,7 @@ class VsopLexer():
     t_ignore  = ' \t'
 
     def t_INTEGER_LITERAL(self, t):
-        r'(0x[0-9a-fA-F]+|\d+)'
+        r'(0x[0-9a-fA-F]+|^\d+$)'
         if t.value.startswith('0x'):
             t.value = str(int(t.value.replace('0x', ''), 16))
         elif not t.value == "0":
@@ -108,7 +108,9 @@ class VsopLexer():
 
     def t_INTEGER_ERROR(self,t):
         r'(0x[0-9a-fA-F]*[g-zG-Z]+[0-9g-zG-Z]*|0x)'
-        return t
+        colno = self.find_column(self.string_text, t)
+        sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value[0]))
+        return "error"
 
     def t_TYPE_IDENTIFIER(self, t):
 	    r'[A-Z]([a-zA-Z]|\d+|_)*'

@@ -15,4 +15,4 @@ install-tools:
 
 
 vsopc:
-	${PYTHON} vsopc.py -lex 
+

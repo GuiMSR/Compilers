@@ -15,7 +15,6 @@ from collections import deque
 class VsopLexer():
 
     def __init__(self, file_name, string_text):
-        'Lexer constructor called.'
         self.lexer = lex.lex(module=self)
         self.file_name = file_name
         self.string_text = string_text
@@ -31,8 +30,7 @@ class VsopLexer():
         self.string_pos = (0,0)
 
     def __del__(self):
-        print('Lexer destructor called.')
-
+        pass
 
     tokens = [
         'INTEGER_LITERAL',
@@ -87,22 +85,30 @@ class VsopLexer():
     t_MINUS = r'\-'
     t_TIMES =  r'\*'
     t_DIV = r'/'
-    t_POW = r'/^'
+    t_POW = r'\^'
 
 
     t_LOWER_EQUAL = r'\<='
     t_EQUAL = r'\='
     t_LOWER = r'\<'
 
-
-    def t_INTEGER_ERROR(self,t):
-        r'0x[0-9a-fA-F]*[g-zG-Z]+[0-9g-zG-Z]*'
-        return t
+    t_ignore  = ' \t'
 
     def t_INTEGER_LITERAL(self, t):
-	    r'(0x[0-9a-fA-F]+|\d+)'
-	    return t
+        r'(0x[0-9a-fA-F]+|\d+)'
+        if t.value.startswith('0x'):
+            t.value = str(int(t.value.replace('0x', ''), 16))
+        elif not t.value == "0":
+            t.value = re.sub(r'^0*', '', t.value)
+            if len(re.sub("[0-9]", "", t.value)) != 0:
+                colno = self.find_column(self.string_text, t)
+                sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value[0]))
+                return "error"
+        return t
 
+    def t_INTEGER_ERROR(self,t):
+        r'(0x[0-9a-fA-F]*[g-zG-Z]+[0-9g-zG-Z]*|0x)'
+        return t
 
     def t_TYPE_IDENTIFIER(self, t):
 	    r'[A-Z]([a-zA-Z]|\d+|_)*'
@@ -112,22 +118,6 @@ class VsopLexer():
 	    r'[a-z]([a-zA-Z]|\d+|_)*'
 	    return t
 
-    
-    def t_STRING_LITERAL(self, t):
-	    r"\"([a-zA-Z0-9 ]|\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|\s)*)*\""
-	    return t
-
-#     def t_string_quote(self,t):
-#         r'\"'
-#         colno = self.find_column(self.string_text, t)
-#         if self.double_quoteNB%2==0:
-#            self.double_quoteNB +=1
-#            self.string_pos = (t.lineno, colno)
-#         else:
-#             self.double_quoteNB +=1
-
-
-
     def t_newline(self, t):
 	     r'\n+'
 	     t.lexer.lineno += len(t.value)
@@ -136,18 +126,15 @@ class VsopLexer():
 	     line_start = input.rfind('\n', 0, token.lexpos) + 1
 	     return (token.lexpos - line_start) + 1
 
-    t_ignore  = ' \t'
-
-
     def t_lineComment(self,t):
-        r'(//.*\n)'
+        r'(//.*(\n|\Z))'
         t.lexer.lineno += 1
         pass
 
     def t_error(self, t):
         colno = self.find_column(self.string_text, t)
-        sys.stderr.write("{0}:{1}:{2}: {3} is not a valid VSOP character\n".format(self.file_name, t.lineno, colno, t.value[0]))
-        t.lexer.skip(1)
+        sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid VSOP character\n".format(self.file_name, t.lineno, colno, t.value[0]))
+        return "error"
 
     def t_INITIAL_string(self,t):
         r'\"'
@@ -168,25 +155,42 @@ class VsopLexer():
 
     def t_STRING_string_literal(self,t):
         r'((?!\\|\"|\').|(\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|([ \t])*\n)))+'
-        t.value = re.sub(r"\\([ \t])*\n", '', t.value)
+        returns = sum(1 for m in re.finditer(r"\\([ \t])*\n", t.value))
+        if returns > 0:
+            t.value = re.sub(r"\\([ \t])*\n([ \t])*", '', t.value)
+            t.lexer.lineno += returns
+        t.value = '\"' + t.value + '\"'
+        t.value = t.value.replace('\\t', '\\x09')
+        t.value = t.value.replace('\\n', '\\x0a')
+        t.value = t.value.replace('\\b', '\\x08')
+        t.value = t.value.replace('\\r', '\\x0d')
+        t.value = t.value.replace('\\\\', '\\x5c')
+        t.value = t.value.replace('\\"', '\\x22')
         return t
     
     def t_STRING_invalid(self,t):
         r'\\((?!\").)* '
         pos = (t.lineno, self.find_column(self.string_text, t))
-        sys.stderr.write("{0}:{1}:{2}: invalid escape sequence {3}\n".format(self.file_name, pos[0], pos[1], t.value))
+        sys.stderr.write("{0}:{1}:{2}: lexical error: invalid escape sequence {3}\n".format(self.file_name, pos[0], pos[1], t.value))
+        return "error"
     
     def t_STRING_eof(self,t):
         
         if self.double_quoteNB%2 !=0:
             pos = self.string_pos
-            sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+            sys.stderr.write("{0}:{1}:{2}: lexical error: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+            return "error"
         
     def t_STRING_return(self,t):
         r'\n'
         pos = (t.lineno, self.find_column(self.string_text, t))
-        sys.stderr.write("{0}:{1}:{2}: raw line feed not permitted inside a string\n".format(self.file_name, pos[0], pos[1]))
+        sys.stderr.write("{0}:{1}:{2}: lexical error: raw line feed not permitted inside a string\n".format(self.file_name, pos[0], pos[1]))
+        return "error"
 
+    t_STRING_ignore = ""
+
+    def t_STRING_error(self,t):
+        pass
 
     def t_INITIAL_comm(self,t):
         r'\(\*'
@@ -217,6 +221,8 @@ class VsopLexer():
 
     def t_COMMENT_nl(self,t):
         r'(\n|\r|\r\n)|\s|\t'
+        if(t.value == "\n" or t.value == "\r\n"):
+            t.lexer.lineno += 1
         pass
 
     t_COMMENT_ignore = " \t"
@@ -227,18 +233,11 @@ class VsopLexer():
         # multi-line eof error
 
         pos = self.comment_pos.pop()
-        sys.stderr.write("{0}:{1}:{2}: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+        sys.stderr.write("{0}:{1}:{2}: lexical error: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
+        return "error"
 
 
     def t_COMMENT_error(self,t):
         r'.'
         print("ERROR:", t.value)
         return t
-
-
-
-    # def t_eof(self, t):
-
-    #     if self.double_quoteNB%2 !=0:
-    #         pos = self.string_pos
-    #         sys.stderr.write("{0}:{1}:{2}: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))

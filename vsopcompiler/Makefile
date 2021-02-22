@@ -1,6 +1,6 @@
 PYTHON = python3
 
-.PHONY = help install-tools vsopc
+.PHONY = help, install-tools, vsopc
 
 .DEFAULT-GOAL = help
 
@@ -14,5 +14,7 @@ help:
 install-tools:
 
 
+
+
 vsopc:
-	${PYTHON} vsopc.py -lex 
+	${PYTHON} vsopc.py

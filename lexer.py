@@ -94,22 +94,20 @@ class VsopLexer():
     t_LOWER = r'\<'
 
     def t_INTEGER_LITERAL(self, t):
-        r'(0x[0-9a-fA-F][ \t]+|\d+((\n|\r|\r\n)| |\s|\t|\Z))'
+        r'(0x[0-9a-fA-F]+|\d+)([a-zA-Z]|\d+|_)*'
         if t.value.startswith('0x'):
-            t.value = str(int(t.value.replace('0x', ''), 16))
+            try: 
+                t.value = str(int(t.value, 16))
+            except:
+                colno = self.find_column(self.string_text, t)
+                sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value))
+                t.type = "error"
         elif not t.value == "0":
             t.value = re.sub(r'^0*', '', t.value)
-            # if len(re.sub("[0-9]", "", t.value)) != 0:
-            #     colno = self.find_column(self.string_text, t)
-            #     sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value[0]))
-            #     t.type = "error"
-        return t
-
-    def t_INTEGER_ERROR(self,t):
-        r'(0x[0-9a-fA-F]*[g-zG-Z]+[0-9g-zG-Z]*|0x|d+.)'
-        colno = self.find_column(self.string_text, t)
-        sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value[0]))
-        t.type = "error"
+            if len(re.sub("[0-9]", "", t.value)) != 0:
+                colno = self.find_column(self.string_text, t)
+                sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value))
+                t.type = "error"
         return t
 
     def t_TYPE_IDENTIFIER(self, t):
@@ -156,8 +154,6 @@ class VsopLexer():
         if(self.double_quoteNB%2==0):
             self.lexer.begin('INITIAL')
         
-    
-
     def t_STRING_string_literal(self,t):
         r'((?!\\|\"|\').|(\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|([ \t])*\n)))+'
         returns = sum(1 for m in re.finditer(r"\\([ \t])*\n", t.value))
@@ -235,7 +231,6 @@ class VsopLexer():
 
     t_COMMENT_ignore = " \t"
 
-
     def t_COMMENT_eof(self, t):
 
         # multi-line eof error
@@ -244,7 +239,6 @@ class VsopLexer():
         sys.stderr.write("{0}:{1}:{2}: lexical error: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
         t.type = "error"
         return t
-
 
     def t_COMMENT_error(self,t):
         r'.'

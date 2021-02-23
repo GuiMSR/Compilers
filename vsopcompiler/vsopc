@@ -51,7 +51,7 @@ def main():
 
 
     for token in lexer:
-        if token == "error":
+        if token.type == "error":
             sys.exit(1)
 
         token.type = token.type.lower().replace("_","-")
@@ -64,10 +64,6 @@ def main():
 
         if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
             sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
-
-        elif token.type == 'integer-error':
-            sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(text_file_name, token.lineno, colno, token.value))
-            sys.exit(1)
 
         else:
             sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))

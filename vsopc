@@ -51,7 +51,7 @@ def main():
 
 
     for token in lexer:
-        if token == "error":
+        if token.type == "error":
             sys.exit(1)
 
         token.type = token.type.lower().replace("_","-")

@@ -3,7 +3,7 @@
 """
 Created on Tue Feb  9 17:53:55 2021
 
-@author: guims
+@author: Guilherme Madureira & Julien Carion
 """
 
 import argparse
@@ -45,6 +45,7 @@ def main():
         'while':'while'
         }
     
+    # Lexer initialisation
     vsopLexer = VsopLexer(text_file_name, string_text)
     lexer = vsopLexer.lexer
     lexer.input(string_text)

@@ -2,7 +2,7 @@
 """
 Created on Tue Feb  9 16:04:25 2021
 
-@author: guims
+@author: Guilherme Madureira & Julien Carion
 """
 
 
@@ -95,21 +95,25 @@ class VsopLexer():
 
     def t_INTEGER_LITERAL(self, t):
         r'(0x[0-9a-fA-F]+|\d+)([a-zA-Z]|\d+|_)*'
+
+        # Changing hexadecimal to decimal
         if t.value.startswith('0x'):
             try: 
                 t.value = str(int(t.value, 16))
             except:
+                # Incorrect hexadeciaml values
                 colno = self.find_column(self.string_text, t)
                 sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value))
                 t.type = "error"
+
         elif not t.value == "0":
             t.value = re.sub(r'^0*', '', t.value)
+            # Detect wrong literal-integers (eg. 42g, 56t,...)
             if len(re.sub("[0-9]", "", t.value)) != 0:
                 colno = self.find_column(self.string_text, t)
                 sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value))
                 t.type = "error"
         return t
-
 
     def t_TYPE_IDENTIFIER(self, t):
 	    r'[A-Z]([a-zA-Z]|\d+|_)*'
@@ -121,25 +125,31 @@ class VsopLexer():
 
     t_ignore  = ' \t'
 
+    # Increment line number after line feed
     def t_newline(self, t):
 	     r'\n+'
 	     t.lexer.lineno += len(t.value)
-
+    
+    # Find column number at the begin of a token
     def find_column(self, input, token):
 	     line_start = input.rfind('\n', 0, token.lexpos) + 1
 	     return (token.lexpos - line_start) + 1
 
+    # Detecting line comments
     def t_lineComment(self,t):
         r'(//.*(\n|\Z))'
         t.lexer.lineno += 1
         pass
 
+    # Detecting invalid VSOP characters    
     def t_error(self, t):
         colno = self.find_column(self.string_text, t)
         sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid VSOP character\n".format(self.file_name, t.lineno, colno, t.value[0]))
         t.type = "error"
         return t
 
+
+    # Detecting string-literal with states
     def t_INITIAL_string(self,t):
         r'\"'
         colno = self.find_column(self.string_text, t)
@@ -155,14 +165,16 @@ class VsopLexer():
         if(self.double_quoteNB%2==0):
             self.lexer.begin('INITIAL')
         
-    
-
     def t_STRING_string_literal(self,t):
         r'((?!\\|\"|\').|(\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|([ \t])*\n)))+'
+
+        # Eliminating unecessary line feed and horizontal tabulations
         returns = sum(1 for m in re.finditer(r"\\([ \t])*\n", t.value))
         if returns > 0:
             t.value = re.sub(r"\\([ \t])*\n([ \t])*", '', t.value)
             t.lexer.lineno += returns
+       
+        # Replaces character escape sequences with ASCII values
         t.value = '\"' + t.value + '\"'
         t.value = t.value.replace('\\t', '\\x09')
         t.value = t.value.replace('\\n', '\\x0a')
@@ -172,6 +184,8 @@ class VsopLexer():
         t.value = t.value.replace('\\"', '\\x22')
         return t
     
+
+    # Invalid string-literal detection
     def t_STRING_invalid(self,t):
         r'\\((?!\").)* '
         pos = (t.lineno, self.find_column(self.string_text, t))
@@ -179,14 +193,14 @@ class VsopLexer():
         t.type = "error"
         return t
     
+    # EOF string-literal not ended
     def t_STRING_eof(self,t):
-        
         if self.double_quoteNB%2 !=0:
             pos = self.string_pos
             sys.stderr.write("{0}:{1}:{2}: lexical error: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
             t.type = "error"
             return t
-        
+    # Invalid line feed inside a string-literal  
     def t_STRING_return(self,t):
         r'\n'
         pos = (t.lineno, self.find_column(self.string_text, t))
@@ -198,7 +212,8 @@ class VsopLexer():
 
     def t_STRING_error(self,t):
         pass
-
+    
+    # Detecting multi-line comments with states
     def t_INITIAL_comm(self,t):
         r'\(\*'
         colno = self.find_column(self.string_text, t)
@@ -225,7 +240,8 @@ class VsopLexer():
     def t_COMMENT_body(self,t):
         r'.'
         pass
-
+    
+    # Increments line number if new line inside comment
     def t_COMMENT_nl(self,t):
         r'(\n|\r|\r\n)|\s|\t'
         if(t.value == "\n" or t.value == "\r\n"):
@@ -234,16 +250,12 @@ class VsopLexer():
 
     t_COMMENT_ignore = " \t"
 
-
+    # Multi-line eof error
     def t_COMMENT_eof(self, t):
-
-        # multi-line eof error
-
         pos = self.comment_pos.pop()
         sys.stderr.write("{0}:{1}:{2}: lexical error: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
         t.type = "error"
         return t
-
 
     def t_COMMENT_error(self,t):
         r'.'

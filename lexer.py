@@ -18,6 +18,7 @@ class VsopLexer():
         self.lexer = lex.lex(module=self)
         self.file_name = file_name
         self.string_text = string_text
+        self.tokens = []
 
         # multi-line comment variables
         self.op_commentNb = 0

@@ -9,11 +9,12 @@ Created on Tue Feb  9 17:53:55 2021
 import argparse
 import sys
 from lexer import VsopLexer
+from parserFile import VsopParser
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-lex", "-lex", dest='source_file', help="Path to the VSOP source code", required=True)
-    args = parser.parse_args()
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument("-lex", "-lex", dest='source_file', help="Path to the VSOP source code", required=True)
+    args = argParser.parse_args()
 
     text_file = open(args.source_file, "r")
     text_file_name = text_file.name
@@ -49,6 +50,10 @@ def main():
     vsopLexer = VsopLexer(text_file_name, string_text)
     lexer = vsopLexer.lexer
     lexer.input(string_text)
+
+    # Parser initialisation
+    parser = VsopParser(lexer)
+    
 
 
     for token in lexer:

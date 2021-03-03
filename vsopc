@@ -13,8 +13,12 @@ from parserFile import VsopParser
 
 def main():
     argParser = argparse.ArgumentParser()
-    argParser.add_argument("-lex", "-lex", dest='source_file', help="Path to the VSOP source code", required=True)
+    mode = argParser.add_mutually_exclusive_group()
+    mode.add_argument('-l', '--showTks', action="store_true", help="Show tokens from lexical analysis")
+    mode.add_argument('-p', '--parsing', action="store_true", help="Don't show tokens from lexcial analysis")
+    argParser.add_argument("source_file", help="Path to the VSOP source code")
     args = argParser.parse_args()
+
 
     text_file = open(args.source_file, "r")
     text_file_name = text_file.name
@@ -51,11 +55,6 @@ def main():
     lexer = vsopLexer.lexer
     lexer.input(string_text)
 
-    # Parser initialisation
-    parser = VsopParser(lexer)
-    
-
-
     for token in lexer:
         if token.type == "error":
             sys.exit(1)
@@ -69,10 +68,19 @@ def main():
             token.type = token.value # Replace TOKEN_CLASS by keyword
 
         if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
-            sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
+            if(args.showTks==1):
+                sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
 
         else:
-            sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
+            if(args.showTks==1):
+                sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
+
+    # Parser initialisation
+    parser = VsopParser(lexer)
+    
+
+
+    
 
 if __name__ == "__main__":
     main()

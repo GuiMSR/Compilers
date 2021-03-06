@@ -35,7 +35,7 @@ class VsopLexer():
 
     tokens = [
         'INTEGER_LITERAL',
-        'error',
+        'Lexicalerror',
         'INTEGER_ERROR',
         'TYPE_IDENTIFIER',
         'OBJECT_IDENTIFIER',
@@ -105,7 +105,7 @@ class VsopLexer():
                 # Incorrect hexadeciaml values
                 colno = self.find_column(self.string_text, t)
                 sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value))
-                t.type = "error"
+                t.type = "Lexicalerror"
 
         elif not t.value == "0":
             t.value = re.sub(r'^0*', '', t.value)
@@ -113,7 +113,7 @@ class VsopLexer():
             if len(re.sub("[0-9]", "", t.value)) != 0:
                 colno = self.find_column(self.string_text, t)
                 sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid integer literal\n".format(self.file_name, t.lineno, colno, t.value))
-                t.type = "error"
+                t.type = "Lexicalerror"
         return t
 
     def t_TYPE_IDENTIFIER(self, t):
@@ -146,7 +146,7 @@ class VsopLexer():
     def t_error(self, t):
         colno = self.find_column(self.string_text, t)
         sys.stderr.write("{0}:{1}:{2}: lexical error: {3} is not a valid VSOP character\n".format(self.file_name, t.lineno, colno, t.value[0]))
-        t.type = "error"
+        t.type = "Lexicalerror"
         return t
 
 
@@ -191,7 +191,7 @@ class VsopLexer():
         r'\\((?!\").)* '
         pos = (t.lineno, self.find_column(self.string_text, t))
         sys.stderr.write("{0}:{1}:{2}: lexical error: invalid escape sequence {3}\n".format(self.file_name, pos[0], pos[1], t.value))
-        t.type = "error"
+        t.type = "Lexicalerror"
         return t
     
     # EOF string-literal not ended
@@ -199,14 +199,14 @@ class VsopLexer():
         if self.double_quoteNB%2 !=0:
             pos = self.string_pos
             sys.stderr.write("{0}:{1}:{2}: lexical error: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
-            t.type = "error"
+            t.type = "Lexicalerror"
             return t
     # Invalid line feed inside a string-literal  
     def t_STRING_return(self,t):
         r'\n'
         pos = (t.lineno, self.find_column(self.string_text, t))
         sys.stderr.write("{0}:{1}:{2}: lexical error: raw line feed not permitted inside a string\n".format(self.file_name, pos[0], pos[1]))
-        t.type = "error"
+        t.type = "Lexicalerror"
         return t
 
     t_STRING_ignore = ""
@@ -255,7 +255,7 @@ class VsopLexer():
     def t_COMMENT_eof(self, t):
         pos = self.comment_pos.pop()
         sys.stderr.write("{0}:{1}:{2}: lexical error: multi-line comment is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
-        t.type = "error"
+        t.type = "Lexicalerror"
         return t
 
     def t_COMMENT_error(self,t):

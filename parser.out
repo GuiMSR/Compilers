@@ -1,0 +1,284 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Unused terminals:
+
+    ASSIGN
+    COLON
+    COMMA
+    COMMENTS
+    DOT
+    EQUAL
+    INTEGER_ERROR
+    LBRACE
+    LOWER
+    LOWER_EQUAL
+    Lexicalerror
+    OBJECT_IDENTIFIER
+    POW
+    RBRACE
+    SEMICOLON
+    SPACES
+    TYPE_IDENTIFIER
+    string_literal
+
+Grammar
+
+Rule 0     S' -> expression
+Rule 1     expression -> expression PLUS term
+Rule 2     expression -> expression MINUS term
+Rule 3     expression -> term
+Rule 4     term -> term TIMES factor
+Rule 5     term -> term DIV factor
+Rule 6     term -> factor
+Rule 7     factor -> INTEGER_LITERAL
+Rule 8     factor -> LPAR expression RPAR
+
+Terminals, with rules where they appear
+
+ASSIGN               : 
+COLON                : 
+COMMA                : 
+COMMENTS             : 
+DIV                  : 5
+DOT                  : 
+EQUAL                : 
+INTEGER_ERROR        : 
+INTEGER_LITERAL      : 7
+LBRACE               : 
+LOWER                : 
+LOWER_EQUAL          : 
+LPAR                 : 8
+Lexicalerror         : 
+MINUS                : 2
+OBJECT_IDENTIFIER    : 
+PLUS                 : 1
+POW                  : 
+RBRACE               : 
+RPAR                 : 8
+SEMICOLON            : 
+SPACES               : 
+TIMES                : 4
+TYPE_IDENTIFIER      : 
+error                : 
+string_literal       : 
+
+Nonterminals, with rules where they appear
+
+expression           : 1 2 8 0
+factor               : 4 5 6
+term                 : 1 2 3 4 5
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . expression
+    (1) expression -> . expression PLUS term
+    (2) expression -> . expression MINUS term
+    (3) expression -> . term
+    (4) term -> . term TIMES factor
+    (5) term -> . term DIV factor
+    (6) term -> . factor
+    (7) factor -> . INTEGER_LITERAL
+    (8) factor -> . LPAR expression RPAR
+
+    INTEGER_LITERAL shift and go to state 4
+    LPAR            shift and go to state 5
+
+    expression                     shift and go to state 1
+    term                           shift and go to state 2
+    factor                         shift and go to state 3
+
+state 1
+
+    (0) S' -> expression .
+    (1) expression -> expression . PLUS term
+    (2) expression -> expression . MINUS term
+
+    PLUS            shift and go to state 6
+    MINUS           shift and go to state 7
+
+
+state 2
+
+    (3) expression -> term .
+    (4) term -> term . TIMES factor
+    (5) term -> term . DIV factor
+
+    PLUS            reduce using rule 3 (expression -> term .)
+    MINUS           reduce using rule 3 (expression -> term .)
+    $end            reduce using rule 3 (expression -> term .)
+    RPAR            reduce using rule 3 (expression -> term .)
+    TIMES           shift and go to state 8
+    DIV             shift and go to state 9
+
+
+state 3
+
+    (6) term -> factor .
+
+    TIMES           reduce using rule 6 (term -> factor .)
+    DIV             reduce using rule 6 (term -> factor .)
+    PLUS            reduce using rule 6 (term -> factor .)
+    MINUS           reduce using rule 6 (term -> factor .)
+    $end            reduce using rule 6 (term -> factor .)
+    RPAR            reduce using rule 6 (term -> factor .)
+
+
+state 4
+
+    (7) factor -> INTEGER_LITERAL .
+
+    TIMES           reduce using rule 7 (factor -> INTEGER_LITERAL .)
+    DIV             reduce using rule 7 (factor -> INTEGER_LITERAL .)
+    PLUS            reduce using rule 7 (factor -> INTEGER_LITERAL .)
+    MINUS           reduce using rule 7 (factor -> INTEGER_LITERAL .)
+    $end            reduce using rule 7 (factor -> INTEGER_LITERAL .)
+    RPAR            reduce using rule 7 (factor -> INTEGER_LITERAL .)
+
+
+state 5
+
+    (8) factor -> LPAR . expression RPAR
+    (1) expression -> . expression PLUS term
+    (2) expression -> . expression MINUS term
+    (3) expression -> . term
+    (4) term -> . term TIMES factor
+    (5) term -> . term DIV factor
+    (6) term -> . factor
+    (7) factor -> . INTEGER_LITERAL
+    (8) factor -> . LPAR expression RPAR
+
+    INTEGER_LITERAL shift and go to state 4
+    LPAR            shift and go to state 5
+
+    expression                     shift and go to state 10
+    term                           shift and go to state 2
+    factor                         shift and go to state 3
+
+state 6
+
+    (1) expression -> expression PLUS . term
+    (4) term -> . term TIMES factor
+    (5) term -> . term DIV factor
+    (6) term -> . factor
+    (7) factor -> . INTEGER_LITERAL
+    (8) factor -> . LPAR expression RPAR
+
+    INTEGER_LITERAL shift and go to state 4
+    LPAR            shift and go to state 5
+
+    term                           shift and go to state 11
+    factor                         shift and go to state 3
+
+state 7
+
+    (2) expression -> expression MINUS . term
+    (4) term -> . term TIMES factor
+    (5) term -> . term DIV factor
+    (6) term -> . factor
+    (7) factor -> . INTEGER_LITERAL
+    (8) factor -> . LPAR expression RPAR
+
+    INTEGER_LITERAL shift and go to state 4
+    LPAR            shift and go to state 5
+
+    term                           shift and go to state 12
+    factor                         shift and go to state 3
+
+state 8
+
+    (4) term -> term TIMES . factor
+    (7) factor -> . INTEGER_LITERAL
+    (8) factor -> . LPAR expression RPAR
+
+    INTEGER_LITERAL shift and go to state 4
+    LPAR            shift and go to state 5
+
+    factor                         shift and go to state 13
+
+state 9
+
+    (5) term -> term DIV . factor
+    (7) factor -> . INTEGER_LITERAL
+    (8) factor -> . LPAR expression RPAR
+
+    INTEGER_LITERAL shift and go to state 4
+    LPAR            shift and go to state 5
+
+    factor                         shift and go to state 14
+
+state 10
+
+    (8) factor -> LPAR expression . RPAR
+    (1) expression -> expression . PLUS term
+    (2) expression -> expression . MINUS term
+
+    RPAR            shift and go to state 15
+    PLUS            shift and go to state 6
+    MINUS           shift and go to state 7
+
+
+state 11
+
+    (1) expression -> expression PLUS term .
+    (4) term -> term . TIMES factor
+    (5) term -> term . DIV factor
+
+    PLUS            reduce using rule 1 (expression -> expression PLUS term .)
+    MINUS           reduce using rule 1 (expression -> expression PLUS term .)
+    $end            reduce using rule 1 (expression -> expression PLUS term .)
+    RPAR            reduce using rule 1 (expression -> expression PLUS term .)
+    TIMES           shift and go to state 8
+    DIV             shift and go to state 9
+
+
+state 12
+
+    (2) expression -> expression MINUS term .
+    (4) term -> term . TIMES factor
+    (5) term -> term . DIV factor
+
+    PLUS            reduce using rule 2 (expression -> expression MINUS term .)
+    MINUS           reduce using rule 2 (expression -> expression MINUS term .)
+    $end            reduce using rule 2 (expression -> expression MINUS term .)
+    RPAR            reduce using rule 2 (expression -> expression MINUS term .)
+    TIMES           shift and go to state 8
+    DIV             shift and go to state 9
+
+
+state 13
+
+    (4) term -> term TIMES factor .
+
+    TIMES           reduce using rule 4 (term -> term TIMES factor .)
+    DIV             reduce using rule 4 (term -> term TIMES factor .)
+    PLUS            reduce using rule 4 (term -> term TIMES factor .)
+    MINUS           reduce using rule 4 (term -> term TIMES factor .)
+    $end            reduce using rule 4 (term -> term TIMES factor .)
+    RPAR            reduce using rule 4 (term -> term TIMES factor .)
+
+
+state 14
+
+    (5) term -> term DIV factor .
+
+    TIMES           reduce using rule 5 (term -> term DIV factor .)
+    DIV             reduce using rule 5 (term -> term DIV factor .)
+    PLUS            reduce using rule 5 (term -> term DIV factor .)
+    MINUS           reduce using rule 5 (term -> term DIV factor .)
+    $end            reduce using rule 5 (term -> term DIV factor .)
+    RPAR            reduce using rule 5 (term -> term DIV factor .)
+
+
+state 15
+
+    (8) factor -> LPAR expression RPAR .
+
+    TIMES           reduce using rule 8 (factor -> LPAR expression RPAR .)
+    DIV             reduce using rule 8 (factor -> LPAR expression RPAR .)
+    PLUS            reduce using rule 8 (factor -> LPAR expression RPAR .)
+    MINUS           reduce using rule 8 (factor -> LPAR expression RPAR .)
+    $end            reduce using rule 8 (factor -> LPAR expression RPAR .)
+    RPAR            reduce using rule 8 (factor -> LPAR expression RPAR .)
+

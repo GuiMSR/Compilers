@@ -76,10 +76,8 @@ def main():
                 sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
 
     # Parser initialisation
-    result = VsopParser(lexer).parse(string_text)
-    print(result)
-    
-
+    parser = VsopParser(VsopLexer)
+    print(parser.parser.parse(string_text))
 
     
 

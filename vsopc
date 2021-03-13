@@ -28,27 +28,27 @@ def main():
     if len(string_text) == 0 :
         sys.stdout.write("Source code file is empty")
 
-    keywords = {
-        'and': 'and',
-        'bool':'bool',
-        'class':'class',
-        'do':'do',
-        'else':'else',
-        'extends':'extends',
-        'false':'false',
-        'if':'if',
-        'in':'in',
-        'int32':'int32',
-        'isnull':'isnull',
-        'let':'let',
-        'new':'new',
-        'not':'not',
-        'self':'self',
-        'string':'string',
-        'then':'then',
-        'true':'unit',
-        'while':'while'
-        }
+    # keywords = {
+    #     'and': 'and',
+    #     'bool':'bool',
+    #     'class':'class',
+    #     'do':'do',
+    #     'else':'else',
+    #     'extends':'extends',
+    #     'false':'false',
+    #     'if':'if',
+    #     'in':'in',
+    #     'int32':'int32',
+    #     'isnull':'isnull',
+    #     'let':'let',
+    #     'new':'new',
+    #     'not':'not',
+    #     'self':'self',
+    #     'string':'string',
+    #     'then':'then',
+    #     'true':'unit',
+    #     'while':'while'
+    #     }
     
     # Lexer initialisation
     vsopLexer = VsopLexer(text_file_name, string_text)
@@ -64,8 +64,8 @@ def main():
         if(token.type == "string-literal"):
             colno -= 1
 
-        if token.value in keywords:
-            token.type = token.value # Replace TOKEN_CLASS by keyword
+        # if token.value in keywords:
+        #     token.type = token.value # Replace TOKEN_CLASS by keyword
 
         if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
             if(args.showTks==1):

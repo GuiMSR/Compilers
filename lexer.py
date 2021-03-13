@@ -34,6 +34,26 @@ class VsopLexer():
         pass
 
     tokens = [
+        'AND',
+        'BOOL',
+        'CLASS',
+        'DO',
+        'ELSE',
+        'EXTENDS',
+        'FALSE',
+        'IF',
+        'IN',
+        'INT32',
+        'ISNULL',
+        'LET',
+        'NEW',
+        'NOT',
+        'SELF',
+        'STRING',
+        'THEN',
+        'TRUE',
+        'UNIT',
+        'WHILE',
         'INTEGER_LITERAL',
         'Lexicalerror',
         'INTEGER_ERROR',
@@ -93,6 +113,86 @@ class VsopLexer():
     t_LOWER_EQUAL = r'\<='
     t_EQUAL = r'\='
     t_LOWER = r'\<'
+
+    def t_AND(self, t):
+        r'\band\b'
+        return t
+
+    def t_UNIT(self, t):
+        r'\bunit\b'
+        return t
+
+    def t_ISNULL(self, t):
+        r'\bisnull\b'
+        return t
+    
+    def t_NOT(self, t):
+        r'not'
+        return t
+
+    def t_IF(self, t):
+        r'\bif\b'
+        return t
+
+    def t_BOOL(self, t):
+        r'\bbool\b'
+        return t
+
+    def t_CLASS(self, t):
+        r'\bclass\b'
+        return t
+
+    def t_DO(self, t):
+        r'\bdo\b'
+        return t
+
+    def t_ELSE(self, t):
+        r'\belse\b'
+        return t
+
+    def t_EXTENDS(self, t):
+        r'\bextends\b'
+        return t
+
+    def t_FALSE(self, t):
+        r'\bfalse\b'
+        return t
+
+    def t_IN(self, t):
+        r'\bin\b'
+        return t
+
+    def t_INT32(self, t):
+        r'\bint32\b'
+        return t
+
+    def t_LET(self, t):
+        r'\blet\b'
+        return t
+
+    def t_NEW(self, t):
+        r'\bnew\b'
+        return t
+
+    def t_SELF(self, t):
+        r'\bself\b'
+        return t
+
+    def t_STRING(self, t):
+        r'\bstring\b'
+        return t
+
+    def t_THEN(self, t):
+        r'\bthen\b'
+        return t
+
+    def t_TRUE(self, t):
+        r'\btrue\b'
+        return t
+
+    def t_WHILE(self, t):
+        r'\bwhile\b'
+        return t
 
     def t_INTEGER_LITERAL(self, t):
         r'(0x[0-9a-fA-F]+|\d+)([a-zA-Z]|\d+|_)*'

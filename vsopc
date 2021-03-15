@@ -28,32 +28,11 @@ def main():
     if len(string_text) == 0 :
         sys.stdout.write("Source code file is empty")
 
-    # keywords = {
-    #     'and': 'and',
-    #     'bool':'bool',
-    #     'class':'class',
-    #     'do':'do',
-    #     'else':'else',
-    #     'extends':'extends',
-    #     'false':'false',
-    #     'if':'if',
-    #     'in':'in',
-    #     'int32':'int32',
-    #     'isnull':'isnull',
-    #     'let':'let',
-    #     'new':'new',
-    #     'not':'not',
-    #     'self':'self',
-    #     'string':'string',
-    #     'then':'then',
-    #     'true':'unit',
-    #     'while':'while'
-    #     }
-    
     # Lexer initialisation
     vsopLexer = VsopLexer(text_file_name, string_text)
     lexer = vsopLexer.lexer
     lexer.input(string_text)
+    nlines = 0
 
     for token in lexer:
         if token.type == "Lexicalerror":
@@ -64,9 +43,6 @@ def main():
         if(token.type == "string-literal"):
             colno -= 1
 
-        # if token.value in keywords:
-        #     token.type = token.value # Replace TOKEN_CLASS by keyword
-
         if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
             if(args.showTks==1):
                 sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
@@ -74,10 +50,16 @@ def main():
         else:
             if(args.showTks==1):
                 sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
-
+        if(token.lineno > nlines):
+            nlines = token.lineno
     # Parser initialisation
-    parser = VsopParser(VsopLexer)
-    print(parser.parser.parse(string_text))
+    parser = VsopParser(VsopLexer, text_file_name, string_text)
+
+    parsed = parser.parser.parse(string_text)
+    if(isinstance(parsed, str)):
+        print(parsed.replace('])', '])\n'))
+    else:
+        print(parsed)
 
     
 

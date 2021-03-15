@@ -1,2 +1,6 @@
 
 *.pyc
+.vscode/settings.json
+parser.out
+parser.out
+parsetab.py

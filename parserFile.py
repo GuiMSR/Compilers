@@ -8,13 +8,16 @@ Created on We Feb  24 18:41:25 2021
 import ply.yacc as yacc
 from lexer import VsopLexer
 import re
+import sys
 
 
 class VsopParser():
 
 
-    def __init__(self, lexer):
+    def __init__(self, lexer, file_name, string_text):
         self.parser = yacc.yacc(module=self)
+        self.file_name = file_name
+        self.string_text = string_text
         self.methods = []
         self.fields = []
 
@@ -37,13 +40,27 @@ class VsopParser():
 
     start = 'program'
 
+    # def p_program(self, p):
+    #     '''program : class program
+    #                 | class'''
+    #     if len(p) == 3:
+    #         if(str(p[2]) == "None"):
+    #             print(str(p[1]) + " \n")
+    #         else:
+    #             print(str(p[1]) + str(p[2]) + "\n")
+    #     else:
+    #         print(str(p[1]) + "\n")
+
     def p_program(self, p):
         '''program : class program
                     | class'''
         if len(p) == 3:
-            p[0] = p[1] + p[2]
+            if(str(p[2]) == "None"):
+                p[0] = str(str(p[1]))
+            else:
+                p[0] = str(str(p[1]) + str(p[2]))
         else:
-            p[0] = p[1]
+            p[0] = str(str(p[1]))
 
     def p_class(self, p):
         '''class : CLASS TYPE_IDENTIFIER class-body
@@ -126,6 +143,12 @@ class VsopParser():
         else:
             p[0] = p[1] + p[2] + p[3]
 
+    def p_block_error(self,p):
+        '''inblock : inblock error '''
+        sys.stderr.write("semicolon is missing after {0}\n".format(str(p[1])))
+        self.parser.errok()
+        p[0] = p[1]
+
     def p_if(self, p):
         '''expression : IF expression THEN expression
                     | IF expression THEN expression ELSE expression'''
@@ -201,9 +224,24 @@ class VsopParser():
         'expression : LPAR expression RPAR'
         p[0] = p[2]
 
+    def p_par_error(self,p):
+        '''expression : LPAR expression error
+                    | error expression RPAR'''
+        sys.stderr.write("missing parenthesis \n")
+        p[0] = p[2]
+
     def p_expression_block(self, p):
         'expression : block'
         p[0] = p[1]
+
+    def p_expression_error(self, p):
+        '''expression : error
+                    | IF expression THEN expression SEMICOLON error'''
+        if(len(p) > 1 and p[6].type == 'ELSE'):
+            sys.stderr.write("bad syntax for if statement: unneeded semicolon\n")
+        else:
+            sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
+        sys.exit()
     
     def p_args(self, p):
         '''args : expression COMMA args
@@ -227,8 +265,13 @@ class VsopParser():
                         | FALSE'''
         p[0] = p[1]
 
-
+    # Find column number at the begin of a token
+    def find_column(self, input, token):
+	     line_start = input.rfind('\n', 0, token.lexpos) + 1
+	     return (token.lexpos - line_start) + 1
 
     # Error rule for syntax errors
     def p_error(self, p):
-        print("Syntax error at '%s'" % p.value)
+        colno = self.find_column(self.string_text, p)
+        nlines = len(self.string_text.split('\n')) - 1
+        sys.stderr.write("{0}:{1}:{2}: syntax error: ".format(self.file_name, p.lineno - nlines, colno))

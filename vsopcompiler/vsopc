@@ -9,11 +9,20 @@ Created on Tue Feb  9 17:53:55 2021
 import argparse
 import sys
 from lexer import VsopLexer
+from parserFile import VsopParser
+import warnings
+
+
+warnings.filterwarnings("ignore")
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-lex", "-lex", dest='source_file', help="Path to the VSOP source code", required=True)
-    args = parser.parse_args()
+    argParser = argparse.ArgumentParser()
+    mode = argParser.add_mutually_exclusive_group()
+    mode.add_argument('-l', '--showTks', action="store_true", help="Show tokens from lexical analysis")
+    mode.add_argument('-p', '--parsing', action="store_true", help="Don't show tokens from lexcial analysis")
+    argParser.add_argument("source_file", help="Path to the VSOP source code")
+    args = argParser.parse_args()
+
 
     text_file = open(args.source_file, "r")
     text_file_name = text_file.name
@@ -23,36 +32,13 @@ def main():
     if len(string_text) == 0 :
         sys.stdout.write("Source code file is empty")
 
-    keywords = {
-        'and': 'and',
-        'bool':'bool',
-        'class':'class',
-        'do':'do',
-        'else':'else',
-        'extends':'extends',
-        'false':'false',
-        'if':'if',
-        'in':'in',
-        'int32':'int32',
-        'isnull':'isnull',
-        'let':'let',
-        'new':'new',
-        'not':'not',
-        'self':'self',
-        'string':'string',
-        'then':'then',
-        'true':'unit',
-        'while':'while'
-        }
-    
     # Lexer initialisation
     vsopLexer = VsopLexer(text_file_name, string_text)
     lexer = vsopLexer.lexer
     lexer.input(string_text)
 
-
     for token in lexer:
-        if token.type == "error":
+        if token.type == "Lexicalerror":
             sys.exit(1)
 
         token.type = token.type.lower().replace("_","-")
@@ -60,14 +46,24 @@ def main():
         if(token.type == "string-literal"):
             colno -= 1
 
-        if token.value in keywords:
-            token.type = token.value # Replace TOKEN_CLASS by keyword
-
         if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
-            sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
+            if(args.showTks==1):
+                sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
 
         else:
-            sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
+            if(args.showTks==1):
+                sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
+    # Parser initialisation
+    if(args.parsing == 1):
+        parser = VsopParser(VsopLexer, text_file_name, string_text)
+
+        parsed = parser.parser.parse(string_text)
+        # if(isinstance(parsed, str)):
+        #     print(parsed.replace('])', '])\n'))
+        # else:
+        print(parsed)
+
+    
 
 if __name__ == "__main__":
     main()

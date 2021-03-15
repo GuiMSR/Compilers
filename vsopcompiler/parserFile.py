@@ -73,7 +73,7 @@ class VsopParser():
         if len(p) == 4:
             p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '') + ", " + str(self.methods).replace("'", '') + ")"
         else: 
-            p[0] = "Class(" + p[2] + ", " + p[4] + ", " + str(self.fields).replace("'", '') + ", " + str(self.methods).replace("'", '') + ")"
+            p[0] = "Class(" + p[2] + ", " + p[4] + str(self.fields).replace("'", '') + ", " + str(self.methods).replace("'", '') + ")"
         self.fields = []
         self.methods = []
         self.classes.insert(0, p[0])

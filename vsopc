@@ -10,6 +10,10 @@ import argparse
 import sys
 from lexer import VsopLexer
 from parserFile import VsopParser
+import warnings
+
+
+warnings.filterwarnings("ignore")
 
 def main():
     argParser = argparse.ArgumentParser()
@@ -32,7 +36,6 @@ def main():
     vsopLexer = VsopLexer(text_file_name, string_text)
     lexer = vsopLexer.lexer
     lexer.input(string_text)
-    nlines = 0
 
     for token in lexer:
         if token.type == "Lexicalerror":
@@ -50,15 +53,14 @@ def main():
         else:
             if(args.showTks==1):
                 sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
-        if(token.lineno > nlines):
-            nlines = token.lineno
     # Parser initialisation
-    parser = VsopParser(VsopLexer, text_file_name, string_text)
+    if(args.parsing == 1):
+        parser = VsopParser(VsopLexer, text_file_name, string_text)
 
-    parsed = parser.parser.parse(string_text)
-    if(isinstance(parsed, str)):
-        print(parsed.replace('])', '])\n'))
-    else:
+        parsed = parser.parser.parse(string_text)
+        # if(isinstance(parsed, str)):
+        #     print(parsed.replace('])', '])\n'))
+        # else:
         print(parsed)
 
     

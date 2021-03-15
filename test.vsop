@@ -24,7 +24,6 @@ class Main {
                                          1, (new Cons).init(
                                          2, new Nil))) in {
             print("List has length ");
-            if cond then e1; else oui;
             print("\n");
             0
         }

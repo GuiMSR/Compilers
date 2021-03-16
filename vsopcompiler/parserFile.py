@@ -41,20 +41,9 @@ class VsopParser():
 
     start = 'init'
 
-    # def p_program(self, p):
-    #     '''program : class program
-    #                 | class'''
-    #     if len(p) == 3:
-    #         if(str(p[2]) == "None"):
-    #             print(str(p[1]) + " \n")
-    #         else:
-    #             print(str(p[1]) + str(p[2]) + "\n")
-    #     else:
-    #         print(str(p[1]) + "\n")
-
     def p_init(self, p):
         'init : program'
-        p[0] = str(self.classes).replace("'", '')
+        p[0] = str(self.classes).replace("'", '').replace('\\\\','\\')
 
     def p_program(self, p):
         '''program : class program
@@ -71,13 +60,17 @@ class VsopParser():
         '''class : CLASS TYPE_IDENTIFIER class-body
                 | CLASS TYPE_IDENTIFIER EXTENDS TYPE_IDENTIFIER class-body'''
         if len(p) == 4:
-            p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '') + ", " + str(self.methods).replace("'", '') + ")"
+            p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '') + ")"
         else: 
-            p[0] = "Class(" + p[2] + ", " + p[4] + str(self.fields).replace("'", '') + ", " + str(self.methods).replace("'", '') + ")"
+            p[0] = "Class(" + p[2] + ", " + p[4] + ", " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '') + ")"
         self.fields = []
         self.methods = []
-        self.classes.insert(0, p[0])
+        self.classes.append(p[0])
 
+    def p_class_error(self, p):
+        'class : CLASS error'
+        sys.stderr.write("{0} is an invalid class identifier\n".format(str(p[2].value)))
+        sys.exit(1)
 
     def p_class_body(self, p):
         'class-body : LBRACE class-body-in RBRACE'
@@ -86,12 +79,12 @@ class VsopParser():
     def p_class_body_field(self, p):
         'class-body-in : field class-body-in'
         p[0] = p[1] + p[2]
-        self.fields.insert(0, p[0])
+        self.fields.insert(0, p[1])
     
     def p_class_body_method(self, p):
         'class-body-in : method class-body-in'
         p[0] = p[1] + p[2]
-        self.methods.insert(0, p[0])
+        self.methods.insert(0, p[1])
 
     def p_class_body_empty(self, p):
         'class-body-in : '
@@ -108,7 +101,7 @@ class VsopParser():
 
     def p_method(self, p):
         'method : OBJECT_IDENTIFIER LPAR formals RPAR COLON type block'
-        p[0] = "Method(" + p[1] + ", " + p[3] + ", " + p[6] + ", " + p[7] + ")"
+        p[0] = "Method(" + p[1] + ", [" + p[3] + "], " + p[6] + ", " + p[7] + ")"
 
     def p_type(self, p):
         '''type : TYPE_IDENTIFIER
@@ -135,10 +128,7 @@ class VsopParser():
 
     def p_block(self, p): 
         'block : LBRACE inblock RBRACE'
-        if ';' in p[2]:
-            result = "[" + p[2] + "]"
-        else:
-            result = p[2]
+        result = "[" + p[2] + "]"
         p[0] = result.replace(';', ', ')
 
     def p_block_inside(self, p):
@@ -152,8 +142,7 @@ class VsopParser():
     def p_block_error(self,p):
         '''inblock : inblock error '''
         sys.stderr.write("semicolon is missing after {0}\n".format(str(p[1])))
-        self.parser.errok()
-        p[0] = p[1]
+        sys.exit(1)
 
     def p_if(self, p):
         '''expression : IF expression THEN expression
@@ -234,7 +223,7 @@ class VsopParser():
         '''expression : LPAR expression error
                     | error expression RPAR'''
         sys.stderr.write("missing parenthesis \n")
-        p[0] = p[2]
+        sys.exit(1)
 
     def p_expression_block(self, p):
         'expression : block'
@@ -247,7 +236,7 @@ class VsopParser():
             sys.stderr.write("bad syntax for if statement: unneeded semicolon\n")
         else:
             sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
-        sys.exit()
+        sys.exit(1)
     
     def p_args(self, p):
         '''args : expression COMMA args

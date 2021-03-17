@@ -1,13 +1,8 @@
-i : int32 <- 42; // Fields should be inside classes
-class Main extends IO {
-    main() : int32 {
-        let xs : List <- (new Cons).init(0, (new Cons).init(
-                                         1, (new Cons).init(
-                                         2, new Nil))) in {
-            print("List has length ");
-            printInt32(xs.length());
-            print("\n");
-            0
-        }
-    }
-}
+class Test {
+    method1() : bool { false }
+    field1 : string <- "hello";
+    method2(s : string) : string { s }
+    field2 : int32 <- 42
+
+
+method2(s : string) : string { s }

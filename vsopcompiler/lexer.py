@@ -301,6 +301,7 @@ class VsopLexer():
             sys.stderr.write("{0}:{1}:{2}: lexical error: string literal is not terminated when end-of-file is reached\n".format(self.file_name, pos[0], pos[1]))
             t.type = "Lexicalerror"
             return t
+            
     # Invalid line feed inside a string-literal  
     def t_STRING_return(self,t):
         r'\n'

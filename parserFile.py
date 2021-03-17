@@ -25,7 +25,49 @@ class VsopParser():
     def __del__(self):
         pass
 
-    tokens = VsopLexer.tokens
+    tokens = [
+        'AND',
+        'BOOL',
+        'CLASS',
+        'DO',
+        'ELSE',
+        'EXTENDS',
+        'FALSE',
+        'IF',
+        'IN',
+        'INT32',
+        'ISNULL',
+        'LET',
+        'NEW',
+        'NOT',
+        'SELF',
+        'STRING',
+        'THEN',
+        'TRUE',
+        'UNIT',
+        'WHILE',
+        'INTEGER_LITERAL',
+        'TYPE_IDENTIFIER',
+        'OBJECT_IDENTIFIER',
+        'string_literal',
+        'ASSIGN',
+        'LBRACE',
+        'RBRACE',
+        'LPAR',
+        'RPAR',
+        'COLON',
+        'SEMICOLON',
+        'COMMA',
+        'DOT',
+        'PLUS',
+        'MINUS',
+        'TIMES',
+        'DIV',
+        'POW',
+        'LOWER_EQUAL',
+        'EQUAL',
+        'LOWER'
+   	   ]
 
     precedence = (
     ('right','ASSIGN'),
@@ -46,27 +88,31 @@ class VsopParser():
         p[0] = str(self.classes).replace("'", '').replace('\\\\','\\')
 
     def p_program(self, p):
-        '''program : class program
+        '''program : program class
                     | class'''
         if len(p) == 3:
-            if(str(p[2]) == "None"):
-                p[0] = str(str(p[1]))
-            else:
-                p[0] = str(str(p[1]) + str(p[2]))
+            p[0] = str(str(p[1]) + str(p[2]))
         else:
             p[0] = str(str(p[1]))
 
-    def p_program_error(self, p):
-        '''program : field
-                    | method'''
-        token = self.parser.token()
-        if token:
-            colno = self.find_column(self.string_text, token)
-            nlines = len(self.string_text.split('\n')) - 1
-            sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class".format(self.file_name, token.lineno - nlines, colno))
-        else:
-            nlines = len(self.string_text.split('\n'))
-            sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class".format(self.file_name, nlines, 1))
+    def p_field_method_error(self, p):
+        '''class : field
+                | method'''
+        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.exit(1)
+
+    def p_class_error(self, p):
+        'class : CLASS error'
+        sys.stderr.write("{0} is an invalid class identifier\n".format(str(p[2].value)))
+        sys.exit(1)
+
+    def p_general_class_error(self,p):
+        '''class : expression
+                | TYPE_IDENTIFIER
+                | block'''
+        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword".format(self.file_name, p.lineno(1) + 1, colno))
         sys.exit(1)
 
     def p_class(self, p):
@@ -80,29 +126,24 @@ class VsopParser():
         self.methods = []
         self.classes.append(p[0])
 
-    def p_class_error(self, p):
-        'class : CLASS error'
-        sys.stderr.write("{0} is an invalid class identifier\n".format(str(p[2].value)))
-        sys.exit(1)
-
     def p_class_body(self, p):
         'class-body : LBRACE class-body-in RBRACE'
         p[0] = p[1] + p[2] + p[3]
 
-    def class_braces_error(self, p):
+    def p_class_braces_error(self, p):
         'class-body : LBRACE class-body-in error'
         sys.stderr.write("right brace is missing\n")
         sys.exit(1)
 
     def p_class_body_field(self, p):
-        'class-body-in : field class-body-in'
+        'class-body-in : class-body-in field'
         p[0] = p[1] + p[2]
-        self.fields.insert(0, p[1])
+        self.fields.append(p[2])
     
     def p_class_body_method(self, p):
-        'class-body-in : method class-body-in'
+        'class-body-in : class-body-in method'
         p[0] = p[1] + p[2]
-        self.methods.insert(0, p[1])
+        self.methods.append(p[2])
 
     def p_class_body_empty(self, p):
         'class-body-in : '
@@ -131,7 +172,7 @@ class VsopParser():
 
     def p_formals(self, p):
         '''formals : formal
-                | formal COMMA formals
+                | formals COMMA formal
                 | '''
         if len(p) == 2:
             p[0] = p[1]
@@ -149,18 +190,16 @@ class VsopParser():
         result = "[" + p[2] + "]"
         p[0] = result.replace(';', ', ')
 
-    def p_block_braces_error(self,p):
-        'block : LBRACE inblock error'
-        sys.stderr.write("right brace is missing\n")
-        sys.exit(1)
-
     def p_block_inside(self, p):
         '''inblock : inblock SEMICOLON expression
-                | expression'''
+                | expression
+                |'''
         if len(p) == 2:
             p[0] = p[1]
-        else:
+        elif len(p) == 4:
             p[0] = p[1] + p[2] + p[3]
+        else:
+            p[0] = ''
 
     def p_block_error(self,p):
         '''inblock : inblock error '''
@@ -255,14 +294,14 @@ class VsopParser():
     def p_expression_error(self, p):
         '''expression : error
                     | IF expression THEN expression SEMICOLON error'''
-        if(len(p) > 1 and p[6].type == 'ELSE'):
+        if(len(p) > 2 and p[6].type == 'ELSE'):
             sys.stderr.write("bad syntax for if statement: unneeded semicolon\n")
         else:
             sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
         sys.exit(1)
     
     def p_args(self, p):
-        '''args : expression COMMA args
+        '''args : args COMMA expression
                 | expression
                 |'''
         if len(p) == 4:

@@ -330,11 +330,15 @@ class VsopParser():
     # Error rule for syntax errors
     def p_error(self, p):
         if not p:
-            nlines = len(self.string_text.split('\n')) + 1
-            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces".format(self.file_name, nlines, 1))
+            nlines = len(self.string_text.split('\n'))
+            try:
+                lastline = self.string_text.splitlines()[nlines-1]
+            except:
+                lastline = [1]
+            colno = len(lastline)
+            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces".format(self.file_name, nlines, colno))
             sys.exit(1)
         else:
             colno = self.find_column(self.string_text, p)
             nlines = len(self.string_text.split('\n')) - 1
             sys.stderr.write("{0}:{1}:{2}: syntax error: ".format(self.file_name, p.lineno - nlines, colno))
-            # return self.parser.token()

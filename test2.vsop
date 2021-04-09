@@ -2,7 +2,4 @@ class Test {
     method1() : bool { false }
     field1 : string <- "hello";
     method2(s : string) : string { s }
-    field2 : int32 <- 42
-
-
-method2(s : string) : string { s }
+    field2 : int32 <- 42;

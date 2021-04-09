@@ -112,7 +112,7 @@ class VsopParser():
                 | TYPE_IDENTIFIER
                 | block'''
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        sys.stderr.write("{0}:{1}:{2}: syntax error: expected a class identifier".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword".format(self.file_name, p.lineno(1) + 1, colno))
         sys.exit(1)
 
     def p_class(self, p):
@@ -190,18 +190,16 @@ class VsopParser():
         result = "[" + p[2] + "]"
         p[0] = result.replace(';', ', ')
 
-    def p_block_braces_error(self,p):
-        'block : LBRACE inblock error'
-        sys.stderr.write("right brace is missing\n")
-        sys.exit(1)
-
     def p_block_inside(self, p):
         '''inblock : inblock SEMICOLON expression
-                | expression'''
+                | expression
+                |'''
         if len(p) == 2:
             p[0] = p[1]
-        else:
+        elif len(p) == 4:
             p[0] = p[1] + p[2] + p[3]
+        else:
+            p[0] = ''
 
     def p_block_error(self,p):
         '''inblock : inblock error '''
@@ -296,7 +294,7 @@ class VsopParser():
     def p_expression_error(self, p):
         '''expression : error
                     | IF expression THEN expression SEMICOLON error'''
-        if(len(p) > 1 and p[6].type == 'ELSE'):
+        if(len(p) > 2 and p[6].type == 'ELSE'):
             sys.stderr.write("bad syntax for if statement: unneeded semicolon\n")
         else:
             sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
@@ -332,11 +330,15 @@ class VsopParser():
     # Error rule for syntax errors
     def p_error(self, p):
         if not p:
-            nlines = len(self.string_text.split('\n')) + 1
-            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces".format(self.file_name, nlines, 1))
+            nlines = len(self.string_text.split('\n'))
+            try:
+                lastline = self.string_text.splitlines()[nlines-1]
+            except:
+                lastline = [1]
+            colno = len(lastline)
+            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces".format(self.file_name, nlines, colno))
             sys.exit(1)
         else:
             colno = self.find_column(self.string_text, p)
             nlines = len(self.string_text.split('\n')) - 1
             sys.stderr.write("{0}:{1}:{2}: syntax error: ".format(self.file_name, p.lineno - nlines, colno))
-            # return self.parser.token()

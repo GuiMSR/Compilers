@@ -21,6 +21,7 @@ class VsopParser():
         self.methods = []
         self.fields = []
         self.classes = []
+        self.variables_list = []
 
     def __del__(self):
         pass
@@ -83,6 +84,9 @@ class VsopParser():
 
     start = 'init'
 
+    def add_variable(self, identifier, type_id):
+        self.variables_list[-1].update({identifier: type_id})
+
     def p_init(self, p):
         'init : program'
         p[0] = str(self.classes).replace("'", '').replace('\\\\','\\')
@@ -116,8 +120,8 @@ class VsopParser():
         sys.exit(1)
 
     def p_class(self, p):
-        '''class : CLASS TYPE_IDENTIFIER class-body
-                | CLASS TYPE_IDENTIFIER EXTENDS TYPE_IDENTIFIER class-body'''
+        '''class : CLASS new_class_scope class-body
+                | CLASS new_class_scope EXTENDS TYPE_IDENTIFIER class-body'''
         if len(p) == 4:
             p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
         else: 
@@ -125,6 +129,13 @@ class VsopParser():
         self.fields = []
         self.methods = []
         self.classes.append(p[0])
+        self.variables_list.pop()
+
+    def p_new_class_scope(self, p):
+        "new_class_scope : TYPE_IDENTIFIER"
+        p[0] = p[1]
+        s = { }
+        self.variables_list.append(s)
 
     def p_class_body(self, p):
         'class-body : LBRACE class-body-in RBRACE'
@@ -156,11 +167,19 @@ class VsopParser():
             p[0] = "Field(" + p[1] + ", " + p[3] + ")"
         else:
             p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[5] +")"
+        self.add_variable(p[1], p[3])
 
 
     def p_method(self, p):
-        'method : OBJECT_IDENTIFIER LPAR formals RPAR COLON type block'
-        p[0] = "Method(" + p[1] + ", [" + p[3] + "], " + p[6] + ", " + p[7] + ")"
+        'method : OBJECT_IDENTIFIER new_variables_scope LPAR formals RPAR COLON type block'
+        p[0] = "Method(" + p[1] + ", [" + p[4] + "], " + p[7] + ", " + p[8] + ")"
+        self.variables_list.pop()
+
+    def p_new_variables_scope(self, p):
+        "new_variables_scope :"
+        p[0] = ''
+        s = { }
+        self.variables_list.append(s)
 
     def p_type(self, p):
         '''type : TYPE_IDENTIFIER
@@ -184,11 +203,13 @@ class VsopParser():
     def p_formal(self, p):
         'formal : OBJECT_IDENTIFIER COLON type'
         p[0] = p[1] + " " + p[2] + " " + p[3]
+        self.add_variable(p[1], p[3])
 
     def p_block(self, p): 
-        'block : LBRACE inblock RBRACE'
-        result = "[" + p[2] + "]"
+        'block : LBRACE new_variables_scope inblock RBRACE'
+        result = "[" + p[3] + "]"
         p[0] = result.replace(';', ', ')
+        self.variables_list.pop()
 
     def p_block_inside(self, p):
         '''inblock : inblock SEMICOLON expression
@@ -225,6 +246,8 @@ class VsopParser():
             p[0] = "Let(" + p[2] + ", " + p[4] + ", " + p[6] + ")"
         else:
             p[0] = "Let(" + p[2] + ", " + p[4] + ", " + p[6] + ", " + p[8] +")"
+        self.add_variable(p[2], p[4])
+
 
     def p_assign(self, p):
         'expression : OBJECT_IDENTIFIER ASSIGN expression'

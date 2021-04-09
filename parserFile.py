@@ -22,6 +22,8 @@ class VsopParser():
         self.fields = []
         self.classes = []
         self.variables_list = []
+        self.current_class = ""
+        self.expressions_stack = []
 
     def __del__(self):
         pass
@@ -87,6 +89,12 @@ class VsopParser():
     def add_variable(self, identifier, type_id):
         self.variables_list[-1].update({identifier: type_id})
 
+    def search_type(self, identifier):
+        for d in self.variables_list:
+            if(d.get(identifier) != None):
+                return d[identifier]
+        return None
+
     def p_init(self, p):
         'init : program'
         p[0] = str(self.classes).replace("'", '').replace('\\\\','\\')
@@ -129,6 +137,7 @@ class VsopParser():
         self.fields = []
         self.methods = []
         self.classes.append(p[0])
+        self.current_class = ""
         self.variables_list.pop()
 
     def p_new_class_scope(self, p):
@@ -136,6 +145,8 @@ class VsopParser():
         p[0] = p[1]
         s = { }
         self.variables_list.append(s)
+        self.current_class = p[1]
+
 
     def p_class_body(self, p):
         'class-body : LBRACE class-body-in RBRACE'
@@ -228,8 +239,8 @@ class VsopParser():
         sys.exit(1)
 
     def p_if(self, p):
-        '''expression : IF expression THEN expression
-                    | IF expression THEN expression ELSE expression'''
+        '''expression : new_variables_scope IF expression THEN expression
+                    | new_variables_scope IF expression THEN expression ELSE expression'''
         if len(p) == 5:
             p[0] = "If(" + p[2] + ", " + p[4] + ")"
         else: 
@@ -240,18 +251,27 @@ class VsopParser():
         p[0] = "While(" + p[2] + ", " + p[4] + ")"
 
     def p_let(self, p):
-        '''expression : LET OBJECT_IDENTIFIER COLON type IN expression
-                    | LET OBJECT_IDENTIFIER COLON type ASSIGN expression IN expression'''
-        if len(p) == 7:
-            p[0] = "Let(" + p[2] + ", " + p[4] + ", " + p[6] + ")"
+        '''expression : LET let_type IN expression
+                    | LET let_type ASSIGN expression IN expression'''
+        if len(p) == 5:
+            p[0] = "Let(" + p[2] + ", " + p[4] + ")"
         else:
-            p[0] = "Let(" + p[2] + ", " + p[4] + ", " + p[6] + ", " + p[8] +")"
-        self.add_variable(p[2], p[4])
+            p[0] = "Let(" + p[2] + ", " + p[4] + ", " + p[6] +")"
+
+    def p_let_type(self, p):
+        "let_type : OBJECT_IDENTIFIER COLON type"
+        p[0] = p[1] + ", " + p[3] 
+        self.add_variable(p[1], p[3])
 
 
     def p_assign(self, p):
-        'expression : OBJECT_IDENTIFIER ASSIGN expression'
-        p[0] = "Assign(" + p[1] + ", " + p[3] + ")"
+        'expression : OBJECT_IDENTIFIER ASSIGN get_type expression'
+        p[0] = "Assign(" + p[1] + ", " + p[4] + ")"
+        self.add_variable(p[1], self.expressions_stack.pop())
+
+    def p_get_type(self, p):
+        "get_type :"
+        self.expressions_stack.append("")
 
     def p_unary_operators(self, p):
         '''expression : NOT expression
@@ -276,17 +296,27 @@ class VsopParser():
         '''expression : OBJECT_IDENTIFIER LPAR args RPAR
                     | expression DOT OBJECT_IDENTIFIER LPAR args RPAR'''
         if len(p) == 5:
-            p[0] = "Call(self, " + p[1] + ", [" + p[3] + "])"
+            p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "])"
         else: 
             p[0] = "Call("+ p[1] + ", " + p[3] + ", [" + p[5] + "])"    
 
     def p_new_type(self, p):
         'expression : NEW TYPE_IDENTIFIER'
-        p[0] = "New(" + p[2] + ")"
+        p[0] = "New(" + p[2] + ") : " + p[2]
 
     def p_expression_object(self, p):
         'expression : OBJECT_IDENTIFIER'
-        p[0] = p[1]
+        print(self.variables_list)
+        t = self.search_type(p[1])
+        print(p[1])
+        print(t)
+        if t is None:
+            colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: an identifier is used that is not defined in the scope".format(self.file_name, p.lineno(1) + 1, colno))
+            sys.exit(1)
+        p[0] = p[1] + " : " + t
+        if len(self.expressions_stack) > 0:
+            self.expressions_stack[-1] = t
 
     def p_expression_self(self, p):
         'expression : SELF'
@@ -300,7 +330,7 @@ class VsopParser():
         'expression : LPAR RPAR'
         p[0] = ("()")
 
-    def p_par_expression(self, p):
+    def p_par_expression(self, p): 
         'expression : LPAR expression RPAR'
         p[0] = p[2]
 
@@ -328,22 +358,36 @@ class VsopParser():
                 | expression
                 |'''
         if len(p) == 4:
-            p[0] = p[1] + p[2] + p[3]
+            p[0] = p[1] + p[2] + " " + p[3]
         elif len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = ''
 
     def p_literal(self, p):
-        '''literal : INTEGER_LITERAL
-                | string_literal
+        '''literal : literal_integer
+                | literal_string
                 | boolean-literal'''
         p[0] = p[1]
+
+    def p_literal_string(self, p):
+        "literal_string : string_literal"
+        p[0] = p[1] + " : string"
+        if len(self.expressions_stack) > 0:
+            self.expressions_stack[-1] = "string"
+
+    def p_literal_integer(self, p):
+        "literal_integer : INTEGER_LITERAL"
+        p[0] = p[1] + " : int32"
+        if len(self.expressions_stack) > 0:
+            self.expressions_stack[-1] = "int32"
 
     def p_boolean_literal(self, p):
         '''boolean-literal : TRUE 
                         | FALSE'''
-        p[0] = p[1]
+        p[0] = p[1] + " : bool"
+        if len(self.expressions_stack) > 0:
+            self.expressions_stack[-1] = "bool"
 
     # Find column number at the begin of a token
     def find_column(self, input, token):

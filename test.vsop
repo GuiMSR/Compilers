@@ -15,14 +15,20 @@ class Cons extends List {
         self
     }
     head() : int32 { head }
-    isNil() : bool { false; true }
+    isNil() : bool { false }
     length() : int32 { 1 + tail.length() }
 }
 class Main {
     main() : int32 {
         let xs : List <- (new Cons).init(0, (new Cons).init(
-                                         1, (new Cons).init(
-                                         2, new Nil))) in {
+                                             1, (new Cons).init(
+                                             2, new Nil))) in {
+            print("List has length ");
+            printInt32(xs.length());
+            a <- 1 + 1;
+            print("\n");
+            a;
+            0
         }
     }
 }

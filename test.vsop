@@ -25,9 +25,7 @@ class Main {
                                              2, new Nil))) in {
             print("List has length ");
             printInt32(xs.length());
-            a <- 1 + 1;
             print("\n");
-            a;
             0
         }
     }

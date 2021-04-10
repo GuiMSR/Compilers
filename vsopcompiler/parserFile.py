@@ -15,7 +15,7 @@ class VsopParser():
 
 
     def __init__(self, lexer, file_name, string_text):
-        self.parser = yacc.yacc(module=self)
+        self.parser = yacc.yacc(module=self, debug=False)
         self.file_name = file_name
         self.string_text = string_text
         self.methods = []

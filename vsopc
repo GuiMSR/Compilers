@@ -10,6 +10,7 @@ import argparse
 import sys
 from lexer import VsopLexer
 from parserFile import VsopParser
+from semanticsFile import VsopParser2
 import warnings
 
 
@@ -20,6 +21,7 @@ def main():
     mode = argParser.add_mutually_exclusive_group()
     mode.add_argument('-l', '--showTks', action="store_true", help="Show tokens from lexical analysis")
     mode.add_argument('-p', '--parsing', action="store_true", help="Don't show tokens from lexcial analysis")
+    mode.add_argument('-c', '--semantics', action="store_true", help="Add semantics to parsing analysis")
     argParser.add_argument("source_file", help="Path to the VSOP source code")
     args = argParser.parse_args()
 
@@ -56,6 +58,15 @@ def main():
     # Parser initialisation
     if(args.parsing == 1):
         parser = VsopParser(VsopLexer, text_file_name, string_text)
+
+        parsed = parser.parser.parse(string_text)
+        # if(isinstance(parsed, str)):
+        #     print(parsed.replace('])', '])\n'))
+        # else:
+        print(parsed)
+
+    if(args.semantics == 1):
+        parser = VsopParser2(VsopLexer, text_file_name, string_text)
 
         parsed = parser.parser.parse(string_text)
         # if(isinstance(parsed, str)):

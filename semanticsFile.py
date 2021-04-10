@@ -24,6 +24,9 @@ class VsopParser2():
         self.variables_list = []
         self.current_class = ""
         self.expressions_stack = []
+        self.right_type = ""
+        self.left_type = ""
+        self.block_type = []
 
     def __del__(self):
         pass
@@ -90,6 +93,8 @@ class VsopParser2():
         self.variables_list[-1].update({identifier: type_id})
 
     def search_type(self, identifier):
+        print(identifier)
+        print(self.variables_list)
         for d in self.variables_list:
             if(d.get(identifier) != None):
                 return d[identifier]
@@ -173,11 +178,11 @@ class VsopParser2():
 
     def p_field(self, p):
         '''field : OBJECT_IDENTIFIER COLON type SEMICOLON
-                | OBJECT_IDENTIFIER COLON type ASSIGN expression SEMICOLON'''
+                | OBJECT_IDENTIFIER COLON type ASSIGN get_type expression SEMICOLON'''
         if len(p) == 5:
             p[0] = "Field(" + p[1] + ", " + p[3] + ")"
         else:
-            p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[5] +")"
+            p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[6] +")"
         self.add_variable(p[1], p[3])
 
 
@@ -217,10 +222,16 @@ class VsopParser2():
         self.add_variable(p[1], p[3])
 
     def p_block(self, p): 
-        'block : LBRACE new_variables_scope inblock RBRACE'
-        result = "[" + p[3] + "]"
-        p[0] = result.replace(';', ', ')
+        'block : LBRACE get_type check_block new_variables_scope inblock RBRACE'
+        result = "[" + p[5] + "]"
+        p[0] = result.replace(';', ', ') + " : " + self.block_type.pop()
         self.variables_list.pop()
+        print(p[0])
+
+    def p_check_block(self, p):
+        'check_block :'
+        self.block_type.append("")
+        p[0] = ''
 
     def p_block_inside(self, p):
         '''inblock : inblock SEMICOLON expression
@@ -269,28 +280,81 @@ class VsopParser2():
         p[0] = "Assign(" + p[1] + ", " + p[4] + ")"
         self.add_variable(p[1], self.expressions_stack.pop())
 
+    def p_unary_operators(self, p):
+        '''expression : NOT get_type expression check_bool
+                    | MINUS get_type expression check_int %prec UMINUS'''
+        p[0] = "UnOp(" + p[1] + ", " + p[3] + ") : " + self.expressions_stack.pop()
+
+    def p_check_int(self, p):
+        "check_int :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        var_type = self.expressions_stack[-1]
+        if(var_type != "int32"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, var_type))
+            sys.exit(1)
+        p[0] = ''
+
+    def p_check_bool(self, p):
+        "check_bool :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        var_type = self.expressions_stack[-1]
+        if(var_type != "bool"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, var_type))
+            sys.exit(1)
+        p[0] = ''
+
+    def p_unary_isnull(self, p):
+        "expression : ISNULL expression"
+        p[0] = "UnOp(" + p[1] + ", " + p[2] + ") : bool"
+
+    def p_binary_operators(self, p):
+        '''expression : expression store_left PLUS get_type expression store_right check_int2
+                  | expression store_left MINUS get_type expression store_right check_int2
+                  | expression store_left TIMES get_type expression store_right check_int2
+                  | expression store_left DIV get_type expression store_right check_int2
+                  | expression store_left EQUAL get_type expression store_right check_bool2
+                  | expression store_left LOWER_EQUAL get_type expression store_right check_bool2
+                  | expression store_left LOWER get_type expression store_right check_bool2
+                  | expression store_left POW get_type expression store_right check_int2
+                  | expression store_left AND get_type expression store_right check_bool2'''
+        p[0] = "BinOp("+ p[3] +", " + p[1] + ", " + p[5] +") : " + self.left_type
+
     def p_get_type(self, p):
         "get_type :"
         self.expressions_stack.append("")
+        p[0] = ''
 
-    def p_unary_operators(self, p):
-        '''expression : NOT expression
-                    | MINUS expression %prec UMINUS
-                    | ISNULL expression'''
-        p[0] = "UnOp(" + p[1] + ", " + p[2] + ")"
+    def p_store_left(self, p):
+        "store_left :"
+        self.left_type = self.expressions_stack.pop()
+        p[0] = ''
 
-    def p_binary_operators(self, p):
-        '''expression : expression PLUS expression
-                  | expression MINUS expression
-                  | expression TIMES expression
-                  | expression DIV expression
-                  | expression EQUAL expression
-                  | expression LOWER_EQUAL expression
-                  | expression LOWER expression
-                  | expression POW expression
-                  | expression AND expression'''
-        p[0] = "BinOp("+ p[2] +", " + p[1] + ", " + p[3] +")"
+    def p_store_right(self, p):
+        "store_right :"
+        self.right_type = self.expressions_stack.pop()
+        p[0] = ''
 
+    def p_check_int2(self, p):
+        "check_int2 :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        if(self.left_type != "int32"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type))
+            sys.exit(1)
+        if(self.right_type != "int32"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.right_type))
+            sys.exit(1)
+        p[0] = ''
+
+    def p_check_bool2(self, p):
+        "check_bool2 :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        if(self.left_type != "bool"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type))
+            sys.exit(1)
+        if(self.right_type != "bool"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.right_type))
+            sys.exit(1)
+        p[0] = ''
 
     def p_object_call(self, p):
         '''expression : OBJECT_IDENTIFIER LPAR args RPAR
@@ -298,6 +362,15 @@ class VsopParser2():
         if len(p) == 5:
             p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "])"
         else: 
+            t = self.search_type(p[3])
+            if t is None:
+                colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: an identifier is used that is not defined in the scope".format(self.file_name, p.lineno(3) + 1, colno))
+                sys.exit(1)
+            p[0] = p[1] + " : " + t
+            if len(self.expressions_stack) > 0:
+                self.expressions_stack[-1] = t
+                self.block_type[-1] = t
             p[0] = "Call("+ p[1] + ", " + p[3] + ", [" + p[5] + "])"    
 
     def p_new_type(self, p):
@@ -314,6 +387,7 @@ class VsopParser2():
         p[0] = p[1] + " : " + t
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = t
+            self.block_type[-1] = t
 
     def p_expression_self(self, p):
         'expression : SELF'
@@ -372,12 +446,14 @@ class VsopParser2():
         p[0] = p[1] + " : string"
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = "string"
+            self.block_type[-1] = "string"
 
     def p_literal_integer(self, p):
         "literal_integer : INTEGER_LITERAL"
         p[0] = p[1] + " : int32"
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = "int32"
+            self.block_type[-1] = "int32"
 
     def p_boolean_literal(self, p):
         '''boolean-literal : TRUE 
@@ -385,6 +461,7 @@ class VsopParser2():
         p[0] = p[1] + " : bool"
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = "bool"
+            self.block_type[-1] = "bool"
 
     # Find column number at the begin of a token
     def find_column(self, input, token):

@@ -27,6 +27,7 @@ class VsopParser2():
         self.right_type = ""
         self.left_type = ""
         self.block_type = []
+        self.class_dict = {}
 
     def __del__(self):
         pass
@@ -93,8 +94,8 @@ class VsopParser2():
         self.variables_list[-1].update({identifier: type_id})
 
     def search_type(self, identifier):
-        print(identifier)
-        print(self.variables_list)
+        #print(identifier)
+        #print(self.variables_list)
         for d in self.variables_list:
             if(d.get(identifier) != None):
                 return d[identifier]
@@ -151,6 +152,7 @@ class VsopParser2():
         s = { }
         self.variables_list.append(s)
         self.current_class = p[1]
+        self.class_dict.update({p[1] : []})
 
 
     def p_class_body(self, p):
@@ -171,6 +173,7 @@ class VsopParser2():
         'class-body-in : class-body-in method'
         p[0] = p[1] + p[2]
         self.methods.append(p[2])
+        
 
     def p_class_body_empty(self, p):
         'class-body-in : '
@@ -190,6 +193,10 @@ class VsopParser2():
         'method : OBJECT_IDENTIFIER new_variables_scope LPAR formals RPAR COLON type block'
         p[0] = "Method(" + p[1] + ", [" + p[4] + "], " + p[7] + ", " + p[8] + ")"
         self.variables_list.pop()
+        methods_list = self.class_dict[self.current_class]
+        methods_list.append((p[1],p[7]))
+        self.class_dict.update({self.current_class: methods_list})
+        print("class dict: " + str(self.class_dict))
 
     def p_new_variables_scope(self, p):
         "new_variables_scope :"
@@ -226,7 +233,7 @@ class VsopParser2():
         result = "[" + p[5] + "]"
         p[0] = result.replace(';', ', ') + " : " + self.block_type.pop()
         self.variables_list.pop()
-        print(p[0])
+        #print(p[0])
 
     def p_check_block(self, p):
         'check_block :'

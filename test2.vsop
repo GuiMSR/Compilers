@@ -1,5 +1,6 @@
 class GrandParent {
     i(j : int32) : int32 { -j }
+    length() : int32 { 0 }
 }
 class Parent extends GrandParent {
 }

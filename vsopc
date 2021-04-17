@@ -66,7 +66,7 @@ def main():
         print(parsed)
 
     if(args.semantics == 1):
-        parser = VsopParser2(VsopLexer, text_file_name, string_text)
+        parser = VsopParser2(VsopLexer, text_file_name, string_text, 0)
 
         parsed = parser.parser.parse(string_text)
         # if(isinstance(parsed, str)):

@@ -14,10 +14,11 @@ import sys
 class VsopParser2():
 
 
-    def __init__(self, lexer, file_name, string_text):
+    def __init__(self, lexer, file_name, string_text, type_check):
         self.parser = yacc.yacc(module=self, debug=False)
         self.file_name = file_name
         self.string_text = string_text
+        self.type_check = type_check
         self.methods = []
         self.fields = []
         self.classes = []
@@ -28,7 +29,8 @@ class VsopParser2():
         self.left_type = ""
         self.block_type = []
         self.extends = {}
-        self.class_dict = {}
+        self.methods_dict = {}
+        self.fields_dict = {}
         self.calls = []
 
     def __del__(self):
@@ -148,7 +150,7 @@ class VsopParser2():
             p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
         else: 
             p[0] = "Class(" + p[2] + ", " + p[4] + ", " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
-            self.extends.update({variable_list[-1]: p[4]})
+            self.extends.update({p[2]: p[4]})
         self.fields = []
         self.methods = []
         self.classes.append(p[0])
@@ -161,7 +163,8 @@ class VsopParser2():
         s = { }
         self.variables_list.append(s)
         self.current_class = p[1]
-        self.class_dict.update({p[1] : []})
+        self.methods_dict.update({p[1] : []})
+        self.fields_dict.update({p[1] : []})
 
 
     def p_class_body(self, p):
@@ -196,17 +199,22 @@ class VsopParser2():
         else:
             p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[6] +")"
         self.add_variable(p[1], p[3])
+        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        fields_list = self.fields_dict[self.current_class]
+        fields_list.append((p[1],p[3], p.lineno(1), colno))
+        self.fields_dict.update({self.current_class: fields_list})
+        print("fields dict: " + str(self.fields_dict))
 
 
     def p_method(self, p):
         'method : OBJECT_IDENTIFIER new_variables_scope LPAR formals RPAR COLON type block'
         p[0] = "Method(" + p[1] + ", [" + p[4] + "], " + p[7] + ", " + p[8] + ")"
         self.variables_list.pop()
-        methods_list = self.class_dict[self.current_class]
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        methods_list = self.methods_dict[self.current_class]
         methods_list.append((p[1],p[7], p.lineno(1), colno))
-        self.class_dict.update({self.current_class: methods_list})
-        print("class dict: " + str(self.class_dict))
+        self.methods_dict.update({self.current_class: methods_list})
+        print("methods dict: " + str(self.methods_dict))
 
     def p_new_variables_scope(self, p):
         "new_variables_scope :"
@@ -387,12 +395,12 @@ class VsopParser2():
                 """ colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
                 sys.stderr.write("{0}:{1}:{2}: semantic error: an identifier is used that is not defined in the scope".format(self.file_name, p.lineno(3) + 1, colno))
                 sys.exit(1) """
-                
+
 
             if len(self.expressions_stack) > 0:
                 self.expressions_stack[-1] = t
                 self.block_type[-1] = t
-            p[0] = "Call("+ p[1] + ", " + p[3] + ", [" + p[5] + "])"
+            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[5] + "])"
             self.calls.append((self.current_class, p[1], p.lineno(0), colno))     
 
     def p_new_type(self, p):

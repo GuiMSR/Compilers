@@ -27,7 +27,9 @@ class VsopParser2():
         self.right_type = ""
         self.left_type = ""
         self.block_type = []
+        self.extends = {}
         self.class_dict = {}
+        self.calls = []
 
     def __del__(self):
         pass
@@ -100,6 +102,12 @@ class VsopParser2():
             if(d.get(identifier) != None):
                 return d[identifier]
         return None
+    
+    def search_type_in_dict(self, identifier):
+        for tuple in self.class_dict[self.current_class]:
+            if tuple[0] == identifier:
+                return tuple[1]     
+        return None
 
     def p_init(self, p):
         'init : program'
@@ -140,6 +148,7 @@ class VsopParser2():
             p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
         else: 
             p[0] = "Class(" + p[2] + ", " + p[4] + ", " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
+            self.extends.update({variable_list[-1]: p[4]})
         self.fields = []
         self.methods = []
         self.classes.append(p[0])
@@ -194,7 +203,8 @@ class VsopParser2():
         p[0] = "Method(" + p[1] + ", [" + p[4] + "], " + p[7] + ", " + p[8] + ")"
         self.variables_list.pop()
         methods_list = self.class_dict[self.current_class]
-        methods_list.append((p[1],p[7]))
+        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        methods_list.append((p[1],p[7], p.lineno(1), colno))
         self.class_dict.update({self.current_class: methods_list})
         print("class dict: " + str(self.class_dict))
 
@@ -368,17 +378,22 @@ class VsopParser2():
                     | expression DOT OBJECT_IDENTIFIER LPAR args RPAR'''
         if len(p) == 5:
             p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "])"
+            colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+            self.calls.append((self.current_class, p[1], p.lineno(0), colno)) 
         else: 
+            colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
             t = self.search_type(p[3])
             if t is None:
-                colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
+                """ colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
                 sys.stderr.write("{0}:{1}:{2}: semantic error: an identifier is used that is not defined in the scope".format(self.file_name, p.lineno(3) + 1, colno))
-                sys.exit(1)
-            p[0] = p[1] + " : " + t
+                sys.exit(1) """
+                
+
             if len(self.expressions_stack) > 0:
                 self.expressions_stack[-1] = t
                 self.block_type[-1] = t
-            p[0] = "Call("+ p[1] + ", " + p[3] + ", [" + p[5] + "])"    
+            p[0] = "Call("+ p[1] + ", " + p[3] + ", [" + p[5] + "])"
+            self.calls.append((self.current_class, p[1], p.lineno(0), colno))     
 
     def p_new_type(self, p):
         'expression : NEW TYPE_IDENTIFIER'

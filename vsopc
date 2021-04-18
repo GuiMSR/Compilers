@@ -11,6 +11,7 @@ import sys
 from lexer import VsopLexer
 from parserFile import VsopParser
 from semanticsFile import VsopParser2
+from classCheckerFile import ClassChecker
 import warnings
 
 
@@ -58,21 +59,17 @@ def main():
     # Parser initialisation
     if(args.parsing == 1):
         parser = VsopParser(VsopLexer, text_file_name, string_text)
-
         parsed = parser.parser.parse(string_text)
-        # if(isinstance(parsed, str)):
-        #     print(parsed.replace('])', '])\n'))
-        # else:
         print(parsed)
 
     if(args.semantics == 1):
-        parser = VsopParser2(VsopLexer, text_file_name, string_text, 0)
-
+        # parser = VsopParser2(VsopLexer, text_file_name, string_text)
+        # parsed = parser.parser.parse(string_text)
+        # print(parsed)
+        parser = ClassChecker(VsopLexer, text_file_name, string_text)
         parsed = parser.parser.parse(string_text)
-        # if(isinstance(parsed, str)):
-        #     print(parsed.replace('])', '])\n'))
-        # else:
         print(parsed)
+
 
     
 

@@ -287,10 +287,10 @@ class VsopParser2():
         sys.exit(1)
 
     def p_if(self, p):
-        '''expression : IF get_type expression check_bool ret_type THEN new_variables_scope expression ret_variables_scope
+        '''expression : IF expression check_bool THEN new_variables_scope expression ret_variables_scope
                     | IF get_type expression check_bool THEN new_variables_scope expression store_left ret_variables_scope ELSE new_variables_scope get_type expression store_right check_same_if ret_variables_scope'''
-        if len(p) == 10:
-            p[0] = "If(" + p[3] + ", " + p[8] + ") : " + self.expressions_stack[-1]
+        if len(p) == 8:
+            p[0] = "If(" + p[2] + ", " + p[6] + ") : " + self.expressions_stack[-1]
         else: 
             p[0] = "If(" + p[3] + ", " + p[7] + ", " + p[13] + ") : " + self.expressions_stack[-1]
 
@@ -315,10 +315,14 @@ class VsopParser2():
     def p_let(self, p):
         '''expression : LET let_type IN new_variables_scope get_type expression ret_variables_scope
                     | LET let_type ASSIGN new_variables_scope get_type expression store_right ret_variables_scope IN new_variables_scope get_type expression ret_variables_scope check_same_let'''
+        expr_type = self.expressions_stack.pop()
         if len(p) == 8:
-            p[0] = "Let(" + p[2] + ", " + p[6] + ") : " + self.expressions_stack.pop()
+            p[0] = "Let(" + p[2] + ", " + p[6] + ") : " + expr_type
         else:
-            p[0] = "Let(" + p[2] + ", " + p[6] + ", " + p[12] +") : " + self.expressions_stack.pop()
+            p[0] = "Let(" + p[2] + ", " + p[6] + ", " + p[12] +") : " + expr_type
+        self.expressions_stack[-1] = expr_type
+        if len(self.block_type) > 0:
+            self.block_type[-1] = expr_type
 
     def p_check_same_let(self, p):
         "check_same_let :"
@@ -378,6 +382,9 @@ class VsopParser2():
     def p_unary_isnull(self, p):
         "expression : ISNULL expression"
         p[0] = "UnOp(" + p[1] + ", " + p[2] + ") : bool"
+        self.expressions_stack[-1] = "bool"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "bool"
 
     def p_binary_operators(self, p):
         '''expression : expression store_left PLUS get_type expression store_right get_type check_int2
@@ -525,6 +532,10 @@ class VsopParser2():
     def p_expression_self(self, p):
         'expression : SELF'
         p[0] = p[1]
+        if len(self.expressions_stack) > 0:
+            self.expressions_stack[-1] = self.current_class
+        if len(self.block_type) > 0:
+            self.block_type[-1] = self.current_class
 
     def p_expression_literal(self, p):
         'expression : literal'

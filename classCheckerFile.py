@@ -138,7 +138,7 @@ class ClassChecker():
             if method[0] == method_id:
                 return (True, method)
         
-        return False
+        return (False,"nope")
 
     def check_overrides(self):
         for i in self.extends:

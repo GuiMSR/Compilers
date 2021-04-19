@@ -14,7 +14,7 @@ import sys
 class VsopParser2():
 
 
-    def __init__(self, lexer, file_name, string_text):
+    def __init__(self, lexer, file_name, string_text, dictionaries):
         self.parser = yacc.yacc(module=self, debug=False)
         self.file_name = file_name
         self.string_text = string_text
@@ -27,10 +27,10 @@ class VsopParser2():
         self.right_type = ""
         self.left_type = ""
         self.block_type = []
-        self.extends = {}
-        self.methods_dict = {}
-        self.fields_dict = {}
-        self.calls = []
+        self.extends = dictionaries [2]
+        self.methods_dict = dictionaries[1]
+        self.fields_dict = dictionaries[0]
+        self.formals = dictionaries[3]
 
     def __del__(self):
         pass

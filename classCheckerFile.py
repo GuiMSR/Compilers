@@ -22,9 +22,12 @@ class ClassChecker():
         self.fields = []
         self.classes = []
         self.current_class = ""
+        self.current_method = ""
+        self.class_dict = {}
         self.extends = {}
         self.methods_dict = {}
         self.fields_dict = {}
+        self.formals = {}
 
     def __del__(self):
         pass
@@ -100,9 +103,77 @@ class ClassChecker():
                 return tuple[1]     
         return None
 
+    def check_main_exists(self):
+        if "Main" in self.class_dict:
+            for i in self.methods_dict["Main"]:
+                if i[0] == "main":
+                    # Add main right signature detection
+                    return
+            sys.stderr.write("{0}:{1}:{2}: semantic error: No main method in Main".format(self.file_name, self.class_dict["Main"][0], self.class_dict["Main"][1]))
+            sys.exit(1)
+        else:
+            sys.stderr.write("{0}:1:1: semantic error: No class Main".format(self.file_name))
+            sys.exit(1) 
+
+    def check_cycles(self):
+        error = False
+        for i in self.extends:
+            t = i
+            try:
+                while(self.extends[t]):
+                    t = self.extends[t]
+                    if t == i:
+                        error = True
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: class {3} cannot extend child class {4}.\n".format(self.file_name, self.class_dict[i][0], self.class_dict[i][1], i, self.extends[i]))
+                        break
+            except: 
+
+                pass
+        if error:
+            sys.exit(1)
+        return 
+    
+    def method_in_class(self, method_id, class_id):
+        for method in self.methods_dict[class_id]:
+            if method[0] == method_id:
+                return (True, method)
+        
+        return False
+
+    def check_overrides(self):
+        for i in self.extends:
+            for child_method in self.methods_dict[i]:
+                methodInParent = self.method_in_class(child_method[0], self.extends[i])
+                if methodInParent[0] :
+                    # check methods return types
+                    if child_method[1] != methodInParent[1][1]:
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type".format(self.file_name, child_method[2], child_method[3], child_method[0]))
+                        sys.exit(1)
+                    
+                    # check methods formals types and names
+                    child_formals = self.formals[(i,child_method[0])]
+                    parent_formals = self.formals[(self.extends[i], methodInParent[1][0])]
+                    if len(child_formals) != len(parent_formals):
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different formal size".format(self.file_name, child_method[2], child_method[3], child_method[0]))
+                        sys.exit(1)
+                    for index in range(0,len(child_formals)):
+                        # not same name
+                        if child_formals[index][0] != parent_formals[index][0]:
+                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different name".format(self.file_name, child_method[2], child_method[3], child_method[0]))
+                            sys.exit(1)
+                        # not same type
+                        elif child_formals[index][1] != parent_formals[index][1]:
+                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type".format(self.file_name, child_method[2], child_method[3], child_method[0]))
+                            sys.exit(1)
+        return 
+
+
     def p_init(self, p):
         'init : program'
-        p[0] = (self.fields_dict, self.methods_dict)
+        p[0] = (self.fields_dict, self.methods_dict, self.extends, self.formals)
+        self.check_main_exists()
+        self.check_cycles()
+        self.check_overrides()
 
     def p_program(self, p):
         '''program : program class
@@ -148,7 +219,16 @@ class ClassChecker():
     def p_new_class_scope(self, p):
         "new_class_scope : TYPE_IDENTIFIER"
         p[0] = p[1]
+        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        if p[1] in self.class_dict:
+            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, first defined at {4}:{5}".format(self.file_name, p.lineno(1) + 1, colno, p[1], self.class_dict[p[1]][0], self.class_dict[p[1]][1]))
+            sys.exit(1)
+        elif p[1] == "Object":
+            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, class Object is already predefined".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
+            sys.exit(1)
+
         self.current_class = p[1]
+        self.class_dict.update({p[1] : (p.lineno(1), colno)})
         self.methods_dict.update({p[1] : []})
         self.fields_dict.update({p[1] : []})
 
@@ -185,6 +265,11 @@ class ClassChecker():
         else:
             p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[5] +")"
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        for i in self.fields_dict[self.current_class]:
+            if i[0] == p[1]:
+                colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3}, first defined at {4}:{5}".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
+                sys.exit(1)
         fields_list = self.fields_dict[self.current_class]
         fields_list.append((p[1],p[3], p.lineno(1), colno))
         self.fields_dict.update({self.current_class: fields_list})
@@ -192,13 +277,26 @@ class ClassChecker():
 
 
     def p_method(self, p):
-        'method : OBJECT_IDENTIFIER new_variables_scope LPAR formals RPAR COLON type block'
-        p[0] = "Method(" + p[1] + ", [" + p[4] + "], " + p[7] + ", " + p[8] + ")"
+        'method : new_method LPAR formals RPAR COLON type block'
+        p[0] = "Method(" + p[1] + ", [" + p[3] + "], " + p[6] + ", " + p[7] + ")"
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         methods_list = self.methods_dict[self.current_class]
-        methods_list.append((p[1],p[7], p.lineno(1), colno))
+        methods_list.append((p[1],p[6], p.lineno(1), colno))
         self.methods_dict.update({self.current_class: methods_list})
-        # print("methods dict: " + str(self.methods_dict))
+        #print("methods dict: " + str(self.methods_dict))
+
+    def p_new_method(self,p):
+        'new_method : OBJECT_IDENTIFIER'
+        p[0] = p[1]
+        
+        for i in self.methods_dict[self.current_class]:
+            if i[0] == p[1]:
+                colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of method {3}, first defined at {4}:{5}".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
+                sys.exit(1)
+        self.current_method = p[1]
+        self.formals.update({(self.current_class, p[1]) : []})
+        #print(self.formals)
 
     def p_new_variables_scope(self, p):
         "new_variables_scope :"
@@ -226,6 +324,14 @@ class ClassChecker():
     def p_formal(self, p):
         'formal : OBJECT_IDENTIFIER COLON type'
         p[0] = p[1] + " " + p[2] + " " + p[3]
+        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+        for i in self.formals[(self.current_class, self.current_method)]:
+            if i[0] == p[1]:
+                sys.stderr.write("{0}:{1}:{2}: semantic error: {3} method has several formal arguments with the same name,\n redefinition of formal {4}, first defined at {5}:{6}".format(self.file_name, p.lineno(1) + 1, colno,self.current_method ,p[1], i[2], i[3]))
+                sys.exit(1)
+        formals_list = self.formals[(self.current_class, self.current_method)]
+        formals_list.append((p[1],p[3], p.lineno(1), colno))
+        self.formals.update({(self.current_class, self.current_method): formals_list})
 
     def p_block(self, p): 
         'block : LBRACE check_block new_variables_scope inblock RBRACE'

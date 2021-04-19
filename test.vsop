@@ -1,17 +1,23 @@
+class C extends P {
+    add(i : bool) : int32 { i + 42 }
+}
 
+class P { add(i : int32) : int32 { 42 } }
 
 (* Nil is nothing more than a glorified alias to List *)
 class Nil extends List { }
 
+
 class Cons extends List {
     head : int32;
     tail : List;
+    head() : int32 { head }
     init(hd : int32, tl : List) : Cons {
         head <- hd;
         tail <- tl;
         self
     }
-    head() : int32 { head }
+    
     isNil() : bool { false }
     length() : int32 { 1 + tail.length() }
 }

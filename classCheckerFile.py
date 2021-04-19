@@ -196,6 +196,15 @@ class ClassChecker():
                 sys.stderr.write("{0}:{1}:{2}: semantic error: parent {3} doesn't exist".format(self.file_name, self.class_dict[i][0], self.class_dict[i][1], self.extends[i]))
                 sys.exit(1)
         return 
+    
+    def check_fields_types(self):
+        for i in self.class_dict:
+            for field in self.fields_dict[i]:
+                if field[1] not in self.class_dict:
+                    if field[1] != "int32" and field[1] != "bool" and field[1] != "string":
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: use of undefined type {3}".format(self.file_name, field[2], field[3], field[1]))
+                        sys.exit(1)
+
 
 
     def p_init(self, p):
@@ -205,6 +214,7 @@ class ClassChecker():
         self.check_extends_parents()
         self.check_cycles()
         self.check_overrides()
+        self.check_fields_types()
 
     def p_program(self, p):
         '''program : program class

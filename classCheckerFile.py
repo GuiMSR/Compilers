@@ -239,6 +239,7 @@ class ClassChecker():
                 | CLASS new_class_scope EXTENDS TYPE_IDENTIFIER class-body'''
         if len(p) == 4:
             p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
+            self.extends.update({p[2]: "Object"})
         else: 
             p[0] = "Class(" + p[2] + ", " + p[4] + ", " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
             self.extends.update({p[2]: p[4]})

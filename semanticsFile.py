@@ -27,7 +27,7 @@ class VsopParser2():
         self.right_type = []
         self.left_type = []
         self.block_type = []
-        self.extends = dictionaries [2]
+        self.extends = dictionaries[2]
         self.methods_dict = dictionaries[1]
         self.fields_dict = dictionaries[0]
         self.formals = dictionaries[3]
@@ -119,6 +119,8 @@ class VsopParser2():
         for i in self.methods_dict[class_id]:
             if i[0] == method_id:
                 return i[1]
+        if self.extends.get(class_id) != None:
+            return self.type_of_method(self.extends[class_id], method_id)
         return None
 
     def pop_stores(self):
@@ -300,10 +302,15 @@ class VsopParser2():
             sys.exit(1)
         p[0] = ''
         self.expressions_stack[-1] = self.left_type[-1]
+        if len(self.block_type) > 0:
+            self.block_type[-1] = self.left_type[-1]
 
     def p_while(self, p):
-        'expression : WHILE get_type expression ret_type check_bool DO new_variables_scope get_type expression ret_variables_scope'
-        p[0] = "While(" + p[3] + ", " + p[9] + ") : " + self.expressions_stack.pop()
+        'expression : WHILE get_type expression check_bool ret_type DO new_variables_scope expression ret_variables_scope'
+        p[0] = "While(" + p[3] + ", " + p[8] + ") : unit"
+        self.expressions_stack[-1] = "unit"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "unit"
 
     def p_let(self, p):
         '''expression : LET let_type IN new_variables_scope get_type expression ret_variables_scope
@@ -329,18 +336,26 @@ class VsopParser2():
 
     def p_assign(self, p):
         'expression : OBJECT_IDENTIFIER ASSIGN get_type expression'
-        p[0] = "Assign(" + p[1] + ", " + p[4] + ")"
-        self.add_variable(p[1], self.expressions_stack.pop())
+        exp_type = self.expressions_stack.pop()
+        self.add_variable(p[1], exp_type)
+        self.expressions_stack[-1] = exp_type
+        if len(self.block_type) > 0:
+            self.block_type[-1] = exp_type
+        p[0] = "Assign(" + p[1] + ", " + p[4] + ") : " + exp_type
 
     def p_unary_not(self, p):
         'expression : NOT get_type expression check_bool'
         p[0] = "UnOp(" + p[1] + ", " + p[3] + ") : " + self.expressions_stack.pop()
         self.expressions_stack[-1] = "bool"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "bool"
 
     def p_unary_minus(self, p):
         'expression : MINUS get_type expression check_int %prec UMINUS'
         p[0] = "UnOp(" + p[1] + ", " + p[3] + ") : " + self.expressions_stack.pop()
         self.expressions_stack[-1] = "int32"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "int32"
 
     def p_check_int(self, p):
         "check_int :"
@@ -413,6 +428,8 @@ class VsopParser2():
             sys.exit(1)
         p[0] = ''
         self.expressions_stack[-1] = "bool"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "bool"
 
     def p_check_same_int(self, p):
         "check_same_int :"
@@ -425,6 +442,8 @@ class VsopParser2():
             sys.exit(1)
         p[0] = ''
         self.expressions_stack[-1] = "bool"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "bool"
 
     def p_check_int2(self, p):
         "check_int2 :"
@@ -437,6 +456,8 @@ class VsopParser2():
             sys.exit(1)
         p[0] = ''
         self.expressions_stack[-1] = "int32"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "int32"
 
     def p_check_bool2(self, p):
         "check_bool2 :"
@@ -449,12 +470,13 @@ class VsopParser2():
             sys.exit(1)
         p[0] = ''
         self.expressions_stack[-1] = "bool"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "bool"
 
     def p_object_call(self, p):
         '''expression : OBJECT_IDENTIFIER LPAR args RPAR
                     | expression DOT OBJECT_IDENTIFIER LPAR get_type args ret_type RPAR'''
         if len(p) == 5:
-            p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "])"
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
             method_type = self.type_of_method(self.current_class, p[1])
             if method_type is None:
@@ -462,6 +484,9 @@ class VsopParser2():
                 sys.exit(1)
             if len(self.expressions_stack) > 0:
                 self.expressions_stack[-1] = method_type
+            if len(self.block_type) > 0:
+                self.block_type[-1] = method_type
+            p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "]) : " + method_type
         else: 
             colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
             t = self.expressions_stack[-1]
@@ -476,7 +501,7 @@ class VsopParser2():
                 self.expressions_stack[-1] = method_type
             if len(self.block_type) > 0:
                 self.block_type[-1] = method_type
-            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[6] + "])"
+            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[6] + "]) : " + method_type
 
     def p_new_type(self, p):
         'expression : NEW TYPE_IDENTIFIER'

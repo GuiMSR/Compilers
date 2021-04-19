@@ -23,11 +23,11 @@ class ClassChecker():
         self.classes = []
         self.current_class = ""
         self.current_method = ""
-        self.class_dict = {}
+        self.class_dict = {"Object": (1,1)}
         self.extends = {}
-        self.methods_dict = {}
-        self.fields_dict = {}
-        self.formals = {}
+        self.methods_dict = {"Object": [('print', 'Object', 1,1), ('printBool', 'Object', 1,1), ('printInt32', 'Object', 1,1), ('inputLine', 'string', 1,1), ('inputBool', 'bool', 1,1), ('inputInt32', 'int32', 1,1)]}
+        self.fields_dict = {"Object": []}
+        self.formals = {('Object', 'print'): [('s', 'string', 1 ,1)], ('Object', 'printBool'): [('b', 'bool', 1 ,1)], ('Object', 'printInt32'): [('i', 'int32', 1 ,1)], ('Object', 'inputLine'): [], ('Object', 'inputBool'): [], ('Object', 'inputInt32'): []}
 
     def __del__(self):
         pass

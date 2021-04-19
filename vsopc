@@ -65,6 +65,7 @@ def main():
     if(args.semantics == 1):
         checker = ClassChecker(VsopLexer, text_file_name, string_text)
         dictionaries = checker.parser.parse(string_text)
+        # print(dictionaries[2])
         parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
         parsed = parser.parser.parse(string_text)
         print(parsed)

@@ -107,8 +107,14 @@ class ClassChecker():
         if "Main" in self.class_dict:
             for i in self.methods_dict["Main"]:
                 if i[0] == "main":
-                    # Add main right signature detection
+                    if i[1] != "int32":
+                        sys.stderr.write("{0}:{1}:{2}: semantic error:  main method has to be of type int32".format(self.file_name, i[2], i[3]))
+                        sys.exit(1)
+                    elif len(self.formals[("Main", "main")]) > 0:
+                        sys.stderr.write("{0}:{1}:{2}: semantic error:  main method should have no arguments".format(self.file_name, i[2], i[3]))
+                        sys.exit(1)
                     return
+
             sys.stderr.write("{0}:{1}:{2}: semantic error: No main method in Main".format(self.file_name, self.class_dict["Main"][0], self.class_dict["Main"][1]))
             sys.exit(1)
         else:

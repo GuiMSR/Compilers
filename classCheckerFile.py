@@ -171,6 +171,15 @@ class ClassChecker():
                         elif child_formals[index][1] != parent_formals[index][1]:
                             sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type".format(self.file_name, child_method[2], child_method[3], child_method[0]))
                             sys.exit(1)
+        return
+
+    def check_extends_parents(self):
+        for i in self.extends:
+            try:
+                self.class_dict[self.extends[i]]
+            except:
+                sys.stderr.write("{0}:{1}:{2}: semantic error: parent {3} doesn't exist".format(self.file_name, self.class_dict[i][0], self.class_dict[i][1], self.extends[i]))
+                sys.exit(1)
         return 
 
 
@@ -178,6 +187,7 @@ class ClassChecker():
         'init : program'
         p[0] = (self.fields_dict, self.methods_dict, self.extends, self.formals)
         self.check_main_exists()
+        self.check_extends_parents()
         self.check_cycles()
         self.check_overrides()
 

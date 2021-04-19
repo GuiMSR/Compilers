@@ -63,12 +63,11 @@ def main():
         print(parsed)
 
     if(args.semantics == 1):
-        # parser = VsopParser2(VsopLexer, text_file_name, string_text)
-        # parsed = parser.parser.parse(string_text)
-        # print(parsed)
-        parser = ClassChecker(VsopLexer, text_file_name, string_text)
+        checker = ClassChecker(VsopLexer, text_file_name, string_text)
+        dictionaries = checker.parser.parse(string_text)
+        parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
         parsed = parser.parser.parse(string_text)
-        #print(parsed)
+        print(parsed)
 
 
     

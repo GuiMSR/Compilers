@@ -24,13 +24,14 @@ class VsopParser2():
         self.variables_list = []
         self.current_class = ""
         self.expressions_stack = []
-        self.right_type = ""
-        self.left_type = ""
+        self.right_type = []
+        self.left_type = []
         self.block_type = []
         self.extends = dictionaries [2]
         self.methods_dict = dictionaries[1]
         self.fields_dict = dictionaries[0]
         self.formals = dictionaries[3]
+        self.calls = []
 
     def __del__(self):
         pass
@@ -97,8 +98,6 @@ class VsopParser2():
         self.variables_list[-1].update({identifier: type_id})
 
     def search_type(self, identifier):
-        #print(identifier)
-        #print(self.variables_list)
         for d in self.variables_list:
             if(d.get(identifier) != None):
                 return d[identifier]
@@ -115,6 +114,16 @@ class VsopParser2():
             if tuple[0] == identifier:
                 return tuple[1]     
         return None
+
+    def type_of_method(self, class_id, method_id):
+        for i in self.methods_dict[class_id]:
+            if i[0] == method_id:
+                return i[1]
+        return None
+
+    def pop_stores(self):
+        self.right_type.pop()
+        self.left_type.pop()
 
     def p_init(self, p):
         'init : program'
@@ -155,7 +164,6 @@ class VsopParser2():
             p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
         else: 
             p[0] = "Class(" + p[2] + ", " + p[4] + ", " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
-            self.extends.update({p[2]: p[4]})
         self.fields = []
         self.methods = []
         self.classes.append(p[0])
@@ -166,11 +174,10 @@ class VsopParser2():
         "new_class_scope : TYPE_IDENTIFIER"
         p[0] = p[1]
         s = { }
+        for item in self.fields_dict[p[1]]:
+            s.update({item[0]: item[1]})
         self.variables_list.append(s)
         self.current_class = p[1]
-        self.methods_dict.update({p[1] : []})
-        self.fields_dict.update({p[1] : []})
-
 
     def p_class_body(self, p):
         'class-body : LBRACE class-body-in RBRACE'
@@ -203,29 +210,28 @@ class VsopParser2():
             p[0] = "Field(" + p[1] + ", " + p[3] + ")"
         else:
             p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[6] +")"
-        self.add_variable(p[1], p[3])
-        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        fields_list = self.fields_dict[self.current_class]
-        fields_list.append((p[1],p[3], p.lineno(1), colno))
-        self.fields_dict.update({self.current_class: fields_list})
-        print("fields dict: " + str(self.fields_dict))
+            expr_type = self.expressions_stack.pop()
+            if p[3] != expr_type:
+                colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: expression does not conform to type {3}".format(self.file_name, p.lineno(0) + 1, colno, p[3]))
+                sys.exit(1)
 
 
     def p_method(self, p):
         'method : OBJECT_IDENTIFIER new_variables_scope LPAR formals RPAR COLON type block'
         p[0] = "Method(" + p[1] + ", [" + p[4] + "], " + p[7] + ", " + p[8] + ")"
         self.variables_list.pop()
-        colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        methods_list = self.methods_dict[self.current_class]
-        methods_list.append((p[1],p[7], p.lineno(1), colno))
-        self.methods_dict.update({self.current_class: methods_list})
-        print("methods dict: " + str(self.methods_dict))
 
     def p_new_variables_scope(self, p):
         "new_variables_scope :"
         p[0] = ''
         s = { }
         self.variables_list.append(s)
+
+    def p_ret_variables_scope(self, p):
+        "ret_variables_scope :"
+        p[0] = ''
+        self.variables_list.pop()
 
     def p_type(self, p):
         '''type : TYPE_IDENTIFIER
@@ -256,7 +262,6 @@ class VsopParser2():
         result = "[" + p[5] + "]"
         p[0] = result.replace(';', ', ') + " : " + self.block_type.pop()
         self.variables_list.pop()
-        #print(p[0])
 
     def p_check_block(self, p):
         'check_block :'
@@ -280,40 +285,62 @@ class VsopParser2():
         sys.exit(1)
 
     def p_if(self, p):
-        '''expression : new_variables_scope IF expression THEN expression
-                    | new_variables_scope IF expression THEN expression ELSE expression'''
-        if len(p) == 5:
-            p[0] = "If(" + p[3] + ", " + p[5] + ")"
+        '''expression : IF get_type expression check_bool ret_type THEN new_variables_scope expression ret_variables_scope
+                    | IF get_type expression check_bool THEN new_variables_scope expression store_left ret_variables_scope ELSE new_variables_scope get_type expression store_right check_same_if ret_variables_scope'''
+        if len(p) == 10:
+            p[0] = "If(" + p[3] + ", " + p[8] + ") : " + self.expressions_stack[-1]
         else: 
-            p[0] = "If(" + p[3] + ", " + p[5] + ", " + p[7] + ")"
+            p[0] = "If(" + p[3] + ", " + p[7] + ", " + p[13] + ") : " + self.expressions_stack[-1]
+
+    def p_check_same_if(self, p):
+        "check_same_if :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        if(self.left_type[-1] != self.right_type[-1]):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1], self.right_type[-1]))
+            sys.exit(1)
+        p[0] = ''
+        self.expressions_stack[-1] = self.left_type[-1]
 
     def p_while(self, p):
-        'expression : WHILE expression DO expression'
-        p[0] = "While(" + p[2] + ", " + p[4] + ")"
+        'expression : WHILE get_type expression ret_type check_bool DO new_variables_scope get_type expression ret_variables_scope'
+        p[0] = "While(" + p[3] + ", " + p[9] + ") : " + self.expressions_stack.pop()
 
     def p_let(self, p):
-        '''expression : LET let_type IN expression
-                    | LET let_type ASSIGN expression IN expression'''
-        if len(p) == 5:
-            p[0] = "Let(" + p[2] + ", " + p[4] + ")"
+        '''expression : LET let_type IN new_variables_scope get_type expression ret_variables_scope
+                    | LET let_type ASSIGN new_variables_scope get_type expression store_right ret_variables_scope IN new_variables_scope get_type expression ret_variables_scope check_same_let'''
+        if len(p) == 8:
+            p[0] = "Let(" + p[2] + ", " + p[6] + ") : " + self.expressions_stack.pop()
         else:
-            p[0] = "Let(" + p[2] + ", " + p[4] + ", " + p[6] +")"
+            p[0] = "Let(" + p[2] + ", " + p[6] + ", " + p[12] +") : " + self.expressions_stack.pop()
+
+    def p_check_same_let(self, p):
+        "check_same_let :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        if(self.left_type[-1] != self.right_type[-1]):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1], self.right_type[-1]))
+            sys.exit(1)
+        p[0] = ''
 
     def p_let_type(self, p):
         "let_type : OBJECT_IDENTIFIER COLON type"
         p[0] = p[1] + ", " + p[3] 
         self.add_variable(p[1], p[3])
-
+        self.left_type.append(p[3])
 
     def p_assign(self, p):
         'expression : OBJECT_IDENTIFIER ASSIGN get_type expression'
         p[0] = "Assign(" + p[1] + ", " + p[4] + ")"
         self.add_variable(p[1], self.expressions_stack.pop())
 
-    def p_unary_operators(self, p):
-        '''expression : NOT get_type expression check_bool
-                    | MINUS get_type expression check_int %prec UMINUS'''
+    def p_unary_not(self, p):
+        'expression : NOT get_type expression check_bool'
         p[0] = "UnOp(" + p[1] + ", " + p[3] + ") : " + self.expressions_stack.pop()
+        self.expressions_stack[-1] = "bool"
+
+    def p_unary_minus(self, p):
+        'expression : MINUS get_type expression check_int %prec UMINUS'
+        p[0] = "UnOp(" + p[1] + ", " + p[3] + ") : " + self.expressions_stack.pop()
+        self.expressions_stack[-1] = "int32"
 
     def p_check_int(self, p):
         "check_int :"
@@ -338,79 +365,124 @@ class VsopParser2():
         p[0] = "UnOp(" + p[1] + ", " + p[2] + ") : bool"
 
     def p_binary_operators(self, p):
-        '''expression : expression store_left PLUS get_type expression store_right check_int2
-                  | expression store_left MINUS get_type expression store_right check_int2
-                  | expression store_left TIMES get_type expression store_right check_int2
-                  | expression store_left DIV get_type expression store_right check_int2
-                  | expression store_left EQUAL get_type expression store_right check_bool2
-                  | expression store_left LOWER_EQUAL get_type expression store_right check_bool2
-                  | expression store_left LOWER get_type expression store_right check_bool2
-                  | expression store_left POW get_type expression store_right check_int2
-                  | expression store_left AND get_type expression store_right check_bool2'''
-        p[0] = "BinOp("+ p[3] +", " + p[1] + ", " + p[5] +") : " + self.left_type
+        '''expression : expression store_left PLUS get_type expression store_right get_type check_int2
+                  | expression store_left MINUS get_type expression store_right get_type check_int2
+                  | expression store_left TIMES get_type expression store_right get_type check_int2
+                  | expression store_left DIV get_type expression store_right get_type check_int2
+                  | expression store_left EQUAL get_type expression store_right get_type check_same
+                  | expression store_left LOWER_EQUAL get_type expression store_right get_type check_same_int
+                  | expression store_left LOWER get_type expression store_right get_type check_same_int
+                  | expression store_left POW get_type expression store_right get_type check_int2
+                  | expression store_left AND get_type expression store_right get_type check_bool2'''
+        p[0] = "BinOp("+ p[3] +", " + p[1] + ", " + p[5] +") : " + self.expressions_stack[-1]
+        self.pop_stores()
+
 
     def p_get_type(self, p):
         "get_type :"
         self.expressions_stack.append("")
         p[0] = ''
 
+    def p_ret_type(self, p):
+        "ret_type :"
+        self.expressions_stack.pop()
+        p[0] = ''
+
     def p_store_left(self, p):
         "store_left :"
-        self.left_type = self.expressions_stack.pop()
+        if len(self.left_type) == 0 or self.left_type[-1] != "":
+            self.left_type.append(self.expressions_stack.pop())
+        else:       
+            self.left_type[-1] = self.expressions_stack.pop()
         p[0] = ''
 
     def p_store_right(self, p):
         "store_right :"
-        self.right_type = self.expressions_stack.pop()
+        if len(self.right_type) == 0 or self.right_type[-1] != "":
+            self.right_type.append(self.expressions_stack.pop())
+        else:       
+            self.right_type[-1] = self.expressions_stack.pop()
         p[0] = ''
+
+
+    def p_check_same(self, p):
+        "check_same :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        if(self.left_type[-1] != self.right_type[-1]):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1], self.right_type[-1]))
+            sys.exit(1)
+        p[0] = ''
+        self.expressions_stack[-1] = "bool"
+
+    def p_check_same_int(self, p):
+        "check_same_int :"
+        colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
+        if(self.left_type[-1] != "int32"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1]))
+            sys.exit(1)
+        if(self.right_type[-1] != "int32"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.right_type[-1]))
+            sys.exit(1)
+        p[0] = ''
+        self.expressions_stack[-1] = "bool"
 
     def p_check_int2(self, p):
         "check_int2 :"
         colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
-        if(self.left_type != "int32"):
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type))
+        if(self.left_type[-1] != "int32"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1]))
             sys.exit(1)
-        if(self.right_type != "int32"):
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.right_type))
+        if(self.right_type[-1] != "int32"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.right_type[-1]))
             sys.exit(1)
         p[0] = ''
+        self.expressions_stack[-1] = "int32"
 
     def p_check_bool2(self, p):
         "check_bool2 :"
         colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
-        if(self.left_type != "bool"):
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type))
+        if(self.left_type[-1] != "bool"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1]))
             sys.exit(1)
-        if(self.right_type != "bool"):
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.right_type))
+        if(self.right_type[-1] != "bool"):
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, self.right_type[-1]))
             sys.exit(1)
         p[0] = ''
+        self.expressions_stack[-1] = "bool"
 
     def p_object_call(self, p):
         '''expression : OBJECT_IDENTIFIER LPAR args RPAR
-                    | expression DOT OBJECT_IDENTIFIER LPAR args RPAR'''
+                    | expression DOT OBJECT_IDENTIFIER LPAR get_type args ret_type RPAR'''
         if len(p) == 5:
             p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "])"
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-            self.calls.append((self.current_class, p[1], p.lineno(0), colno)) 
+            method_type = self.type_of_method(self.current_class, p[1])
+            if method_type is None:
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} not defined in this scope".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
+                sys.exit(1)
+            if len(self.expressions_stack) > 0:
+                self.expressions_stack[-1] = method_type
         else: 
             colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
-            t = self.search_type(p[3])
+            t = self.expressions_stack[-1]
             if t is None:
-                """ colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: an identifier is used that is not defined in the scope".format(self.file_name, p.lineno(3) + 1, colno))
-                sys.exit(1) """
-
-
+                sys.stderr.write("{0}:{1}:{2}: semantic error: object {3} is not a class".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
+                sys.exit(1)
+            method_type = self.type_of_method(t, p[3])
+            if method_type is None:
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} is not part of class {4}".format(self.file_name, p.lineno(3) + 1, colno, p[3], t))
+                sys.exit(1)
             if len(self.expressions_stack) > 0:
-                self.expressions_stack[-1] = t
-                self.block_type[-1] = t
-            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[5] + "])"
-            self.calls.append((self.current_class, p[1], p.lineno(0), colno))     
+                self.expressions_stack[-1] = method_type
+            if len(self.block_type) > 0:
+                self.block_type[-1] = method_type
+            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[6] + "])"
 
     def p_new_type(self, p):
         'expression : NEW TYPE_IDENTIFIER'
         p[0] = "New(" + p[2] + ") : " + p[2]
+        if len(self.expressions_stack) > 0:
+            self.expressions_stack[-1] = p[2]
 
     def p_expression_object(self, p):
         'expression : OBJECT_IDENTIFIER'
@@ -422,6 +494,7 @@ class VsopParser2():
         p[0] = p[1] + " : " + t
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = t
+        if len(self.block_type) > 0:
             self.block_type[-1] = t
 
     def p_expression_self(self, p):
@@ -434,7 +507,11 @@ class VsopParser2():
 
     def p_par_alone(self,p):
         'expression : LPAR RPAR'
-        p[0] = ("()")
+        p[0] = "() : unit"
+        if len(self.expressions_stack) > 0:
+            self.expressions_stack[-1] = "unit"
+        if len(self.block_type) > 0:
+            self.block_type[-1] = "unit"
 
     def p_par_expression(self, p): 
         'expression : LPAR expression RPAR'
@@ -451,12 +528,8 @@ class VsopParser2():
         p[0] = p[1]
 
     def p_expression_error(self, p):
-        '''expression : error
-                    | IF expression THEN expression SEMICOLON error'''
-        if(len(p) > 2 and p[6].type == 'ELSE'):
-            sys.stderr.write("bad syntax for if statement: unneeded semicolon\n")
-        else:
-            sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
+        '''expression : error'''
+        sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
         sys.exit(1)
     
     def p_args(self, p):
@@ -481,6 +554,7 @@ class VsopParser2():
         p[0] = p[1] + " : string"
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = "string"
+        if len(self.block_type) > 0:
             self.block_type[-1] = "string"
 
     def p_literal_integer(self, p):
@@ -488,6 +562,7 @@ class VsopParser2():
         p[0] = p[1] + " : int32"
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = "int32"
+        if len(self.block_type) > 0:
             self.block_type[-1] = "int32"
 
     def p_boolean_literal(self, p):
@@ -496,6 +571,7 @@ class VsopParser2():
         p[0] = p[1] + " : bool"
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = "bool"
+        if len(self.block_type) > 0:
             self.block_type[-1] = "bool"
 
     # Find column number at the begin of a token

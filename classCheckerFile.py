@@ -360,12 +360,12 @@ class ClassChecker():
         sys.exit(1)
 
     def p_if(self, p):
-        '''expression : new_variables_scope IF expression THEN expression
-                    | new_variables_scope IF expression THEN expression ELSE expression'''
-        if len(p) == 6:
-            p[0] = "If(" + p[3] + ", " + p[5] + ")"
+        '''expression : IF expression THEN expression
+                    | IF expression THEN expression ELSE expression'''
+        if len(p) == 5:
+            p[0] = "If(" + p[2] + ", " + p[4] + ")"
         else: 
-            p[0] = "If(" + p[3] + ", " + p[5] + ", " + p[7] + ")"
+            p[0] = "If(" + p[2] + ", " + p[4] + ", " + p[6] + ")"
 
     def p_while(self, p):
         'expression : WHILE expression DO expression'
@@ -462,12 +462,8 @@ class ClassChecker():
         p[0] = p[1]
 
     def p_expression_error(self, p):
-        '''expression : error
-                    | IF expression THEN expression SEMICOLON error'''
-        if(len(p) > 2 and p[6].type == 'ELSE'):
-            sys.stderr.write("bad syntax for if statement: unneeded semicolon\n")
-        else:
-            sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
+        '''expression : error'''
+        sys.stderr.write("invalid expression: {0}\n".format(str(p[1].value)))
         sys.exit(1)
     
     def p_args(self, p):

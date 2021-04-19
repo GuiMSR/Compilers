@@ -145,9 +145,24 @@ class ClassChecker():
                 return (True, method)
         
         return (False,"nope")
+    
+    def field_in_class(self, field_id, class_id):
+        for field in self.fields_dict[class_id]:
+            if field[0] == field_id:
+                return (True, field)
+        
+        return (False,"nope")
 
     def check_overrides(self):
         for i in self.extends:
+            for child_field in self.fields_dict[i]:
+                fieldInParent = self.field_in_class(child_field[0], self.extends[i])
+                if fieldInParent[0]:
+                    # check field type
+                    if child_field[1] != fieldInParent[1][1]:
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding field {3} with different type".format(self.file_name, child_field[2], child_field[3], child_field[0]))
+                        sys.exit(1)
+
             for child_method in self.methods_dict[i]:
                 methodInParent = self.method_in_class(child_method[0], self.extends[i])
                 if methodInParent[0] :

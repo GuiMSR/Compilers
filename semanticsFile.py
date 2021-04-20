@@ -31,7 +31,7 @@ class VsopParser2():
         self.methods_dict = dictionaries[1]
         self.fields_dict = dictionaries[0]
         self.formals = dictionaries[3]
-        self.calls = []
+        self.args_stack = []
 
     def __del__(self):
         pass
@@ -143,6 +143,13 @@ class VsopParser2():
         if self.extends.get(class_id) != None:
             return self.type_of_method(self.extends[class_id], method_id)
         return None
+    
+    def check_formals(self, args_types, formals):
+        for i, formal in enumerate(formals):
+            if not self.unordered_compare_types(formal[1], args_types[i]):
+                return i
+        return -1
+
 
     def pop_stores(self):
         self.right_type.pop()
@@ -413,6 +420,10 @@ class VsopParser2():
     def p_unary_isnull(self, p):
         "expression : ISNULL expression"
         p[0] = "UnOp(" + p[1] + ", " + p[2] + ") : bool"
+        if not self.compare_types("Object", self.expressions_stack[-1]):
+            colno = p.lexpos(2) - self.string_text.rfind('\n', 0, p.lexpos(2))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: this literal has type {3}, but expected type was Object\n".format(self.file_name, p.lineno(2) + 1, colno,self.expressions_stack[-1]))
+            sys.exit(1)
         self.expressions_stack[-1] = "bool"
         if len(self.block_type) > 0:
             self.block_type[-1] = "bool"
@@ -509,34 +520,56 @@ class VsopParser2():
         p[0] = ''
 
     def p_object_call(self, p):
-        '''expression : OBJECT_IDENTIFIER LPAR args RPAR
-                    | expression DOT OBJECT_IDENTIFIER LPAR get_type args ret_type RPAR'''
-        if len(p) == 5:
+        '''expression : OBJECT_IDENTIFIER LPAR push_args args RPAR
+                    | expression DOT OBJECT_IDENTIFIER LPAR get_type push_args args ret_type RPAR'''
+        args_types = self.args_stack.pop()
+        if len(p) == 6:
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
             method_type = self.type_of_method(self.current_class, p[1])
             if method_type is None:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} not defined in this scope".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} not defined in this scope\n".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
+                sys.exit(1)
+            formals = self.formals[(self.current_class, p[1])]
+            if len(formals) != len(args_types):
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} of class {4} expects {5} arguments, but {6} were provided\n".format(self.file_name, p.lineno(1) + 1, colno, p[3], self.current_class, len(formals), len(args_types)))
+                sys.exit(1)
+            index = self.check_formals(args_types, formals)
+            if index >= 0:
+                sys.stderr.write("{0}:{1}:{2}: semantic error: this literal has type {3}, but expected type was {4}.\n".format(self.file_name, p.lineno(1) + 1, colno, args_types[index], formals[index][1]))
                 sys.exit(1)
             if len(self.expressions_stack) > 0:
                 self.expressions_stack[-1] = method_type
             if len(self.block_type) > 0:
                 self.block_type[-1] = method_type
-            p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "]) : " + method_type
+            p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[4] + "]) : " + method_type
         else: 
             colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
             t = self.expressions_stack[-1]
             if t is None:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: object {3} is not a class".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: object {3} is not a class\n".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
                 sys.exit(1)
             method_type = self.type_of_method(t, p[3])
             if method_type is None:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} is not part of class {4}".format(self.file_name, p.lineno(3) + 1, colno, p[3], t))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} is not part of class {4}\n".format(self.file_name, p.lineno(3) + 1, colno, p[3], t))
+                sys.exit(1)
+            formals = self.formals[(t, p[3])]
+            if len(formals) != len(args_types):
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} of class {4} expects {5} arguments, but {6} were provided\n".format(self.file_name, p.lineno(3) + 1, colno, p[3], t, len(formals), len(args_types)))
+                sys.exit(1)
+            index = self.check_formals(args_types, formals)
+            if index >= 0:
+                sys.stderr.write("{0}:{1}:{2}: semantic error: this literal has type {3}, but expected type was {4}.\n".format(self.file_name, p.lineno(3) + 1, colno, args_types[index], formals[index][1]))
                 sys.exit(1)
             if len(self.expressions_stack) > 0:
                 self.expressions_stack[-1] = method_type
             if len(self.block_type) > 0:
                 self.block_type[-1] = method_type
-            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[6] + "]) : " + method_type
+            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[7] + "]) : " + method_type
+
+    def p_push_args(self, p):
+        'push_args :'
+        p[0] = ''
+        self.args_stack.append([])
 
     def p_new_type(self, p):
         'expression : NEW TYPE_IDENTIFIER'
@@ -604,8 +637,10 @@ class VsopParser2():
                 | expression
                 |'''
         if len(p) == 4:
+            self.args_stack[-1].append(self.expressions_stack[-1])
             p[0] = p[1] + p[2] + " " + p[3]
         elif len(p) == 2:
+            self.args_stack[-1].append(self.expressions_stack[-1])
             p[0] = p[1]
         else:
             p[0] = ''

@@ -156,12 +156,13 @@ class ClassChecker():
     def check_overrides(self):
         for i in self.extends:
             for child_field in self.fields_dict[i]:
-                fieldInParent = self.field_in_class(child_field[0], self.extends[i])
-                if fieldInParent[0]:
-                    # check field type
-                    if child_field[1] != fieldInParent[1][1]:
-                        sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding field {3} with different type".format(self.file_name, child_field[2], child_field[3], child_field[0]))
+                t = i
+                while(self.extends.get(t) != None):
+                    fieldInParent = self.field_in_class(child_field[0], self.extends[t])
+                    if fieldInParent[0]:
+                        sys.stderr.write("{0}:{1}:{2}: redefinition of field {3} (first defined at {4}:{5} in parent class{6}).".format(self.file_name, child_field[2], child_field[3], child_field[0], fieldInParent[1][2], fieldInParent[1][3], self.extends[i]))
                         sys.exit(1)
+                    t = self.extends[t]
 
             for child_method in self.methods_dict[i]:
                 methodInParent = self.method_in_class(child_method[0], self.extends[i])

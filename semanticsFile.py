@@ -110,6 +110,18 @@ class VsopParser2():
         if self.extends.get(type2) != None:
             result = self.compare_types(type1, self.extends[type2])
         return result
+
+    def unordered_compare_types(self, type1, type2):
+        result = False
+        if type1 == type2:
+            return True
+        if self.extends.get(type1) != None:
+            result = self.compare_types(self.extends[type1], type2)
+        if result:
+            return result
+        if self.extends.get(type2) != None:
+            result = self.compare_types(type1, self.extends[type2])
+        return result
         
     
     def search_type_in_methods(self, identifier):
@@ -229,8 +241,12 @@ class VsopParser2():
             p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[6] +")"
             expr_type = self.expressions_stack.pop()
             if not self.compare_types(p[3], expr_type):
-                colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: expression does not conform to type {3}".format(self.file_name, p.lineno(0) + 1, colno, p[3]))
+                colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: expression does not conform to type {3}".format(self.file_name, p.lineno(3) + 1, colno, p[3]))
+                sys.exit(1)
+            if p[6].startswith("Assign"):
+                colno = p.lexpos(6) - self.string_text.rfind('\n', 0, p.lexpos(6))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: use of unbound variable".format(self.file_name, p.lineno(6) + 1, colno))
                 sys.exit(1)
 
 
@@ -313,7 +329,7 @@ class VsopParser2():
             p[0] = "If(" + p[2] + ", " + p[6] + ") : " + self.expressions_stack[-1]
         else: 
             p[0] = ''
-            if(self.compare_types(self.left_type[-1], self.expressions_stack[-1])):
+            if(not self.unordered_compare_types(self.left_type[-1], self.expressions_stack[-1])):
                 self.expressions_stack[-1] = "unit"
             self.left_type.pop()
             if len(self.block_type) > 0:

@@ -98,10 +98,19 @@ class VsopParser2():
         self.variables_list[-1].update({identifier: type_id})
 
     def search_type(self, identifier):
-        for d in self.variables_list:
+        for d in reversed(self.variables_list):
             if(d.get(identifier) != None):
                 return d[identifier]
         return None
+
+    def compare_types(self, type1, type2):
+        result = False
+        if type1 == type2:
+            return True
+        if self.extends.get(type2) != None:
+            result = self.compare_types(type1, self.extends[type2])
+        return result
+        
     
     def search_type_in_methods(self, identifier):
         for tuple in self.methods_dict[self.current_class]:
@@ -219,7 +228,7 @@ class VsopParser2():
         else:
             p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[6] +")"
             expr_type = self.expressions_stack.pop()
-            if p[3] != expr_type:
+            if not self.compare_types(p[3], expr_type):
                 colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
                 sys.stderr.write("{0}:{1}:{2}: semantic error: expression does not conform to type {3}".format(self.file_name, p.lineno(0) + 1, colno, p[3]))
                 sys.exit(1)
@@ -247,6 +256,10 @@ class VsopParser2():
                 | BOOL
                 | STRING
                 | UNIT '''
+        if p[1] not in ["int32", "bool", "string", "unit"] and self.fields_dict.get(p[1]) == None:
+            colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: use of undefined type {3}".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
+            sys.exit(1)
         p[0] = p[1]
 
     def p_formals(self, p):
@@ -296,13 +309,13 @@ class VsopParser2():
         '''expression : IF expression check_bool THEN new_variables_scope expression ret_variables_scope
                     | IF expression check_bool THEN new_variables_scope expression ret_variables_scope ELSE store_left new_variables_scope expression ret_variables_scope'''
         if len(p) == 8:
+            self.expressions_stack[-1] = "unit"
             p[0] = "If(" + p[2] + ", " + p[6] + ") : " + self.expressions_stack[-1]
         else: 
-            if(self.left_type[-1] != self.expressions_stack[-1]):
-                colno = p.lexpos(11) - self.string_text.rfind('\n', 0, p.lexpos(11))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(11) + 1, colno, self.left_type[-1], self.expressions_stack[-1]))
-                sys.exit(1)
             p[0] = ''
+            if(self.compare_types(self.left_type[-1], self.expressions_stack[-1])):
+                self.expressions_stack[-1] = "unit"
+            self.left_type.pop()
             if len(self.block_type) > 0:
                 self.block_type[-1] = self.expressions_stack[-1]
             p[0] = "If(" + p[2] + ", " + p[6] + ", " + p[11] + ") : " + self.expressions_stack[-1]
@@ -329,7 +342,7 @@ class VsopParser2():
     def p_check_same_let(self, p):
         "check_same_let :"
         colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
-        if(self.left_type[-1] != self.right_type[-1]):
+        if not self.compare_types(self.left_type[-1], self.right_type[-1]):
             sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1], self.right_type[-1]))
             sys.exit(1)
         p[0] = ''
@@ -390,7 +403,7 @@ class VsopParser2():
 
     def p_binary_equal(self, p):
         'expression : expression store_left EQUAL expression'
-        if(self.left_type[-1] != self.expressions_stack[-1]):
+        if not self.compare_types(self.left_type[-1], self.expressions_stack[-1]):
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
             sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1], self.expressions_stack[-1]))
             sys.exit(1)
@@ -532,7 +545,7 @@ class VsopParser2():
 
     def p_expression_self(self, p):
         'expression : SELF'
-        p[0] = p[1]
+        p[0] = p[1] + " : " + self.current_class
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = self.current_class
         if len(self.block_type) > 0:
@@ -563,6 +576,7 @@ class VsopParser2():
     def p_expression_block(self, p):
         'expression : block'
         p[0] = p[1]
+        self.block_type.append(self.expressions_stack[-1])
 
     def p_expression_error(self, p):
         '''expression : error'''

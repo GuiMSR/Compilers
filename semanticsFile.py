@@ -256,6 +256,10 @@ class VsopParser2():
                 | BOOL
                 | STRING
                 | UNIT '''
+        if p[1] not in ["int32", "bool", "string", "unit"] and self.fields_dict.get(p[1]) == None:
+            colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: use of undefined type {3}".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
+            sys.exit(1)
         p[0] = p[1]
 
     def p_formals(self, p):
@@ -309,8 +313,9 @@ class VsopParser2():
             p[0] = "If(" + p[2] + ", " + p[6] + ") : " + self.expressions_stack[-1]
         else: 
             p[0] = ''
-            if(self.left_type != self.expressions_stack[-1]):
+            if(self.compare_types(self.left_type[-1], self.expressions_stack[-1])):
                 self.expressions_stack[-1] = "unit"
+            self.left_type.pop()
             if len(self.block_type) > 0:
                 self.block_type[-1] = self.expressions_stack[-1]
             p[0] = "If(" + p[2] + ", " + p[6] + ", " + p[11] + ") : " + self.expressions_stack[-1]
@@ -540,7 +545,7 @@ class VsopParser2():
 
     def p_expression_self(self, p):
         'expression : SELF'
-        p[0] = p[1]
+        p[0] = p[1] + " : " + self.current_class
         if len(self.expressions_stack) > 0:
             self.expressions_stack[-1] = self.current_class
         if len(self.block_type) > 0:
@@ -571,6 +576,7 @@ class VsopParser2():
     def p_expression_block(self, p):
         'expression : block'
         p[0] = p[1]
+        self.block_type.append(self.expressions_stack[-1])
 
     def p_expression_error(self, p):
         '''expression : error'''

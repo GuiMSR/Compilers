@@ -108,17 +108,17 @@ class ClassChecker():
             for i in self.methods_dict["Main"]:
                 if i[0] == "main":
                     if i[1] != "int32":
-                        sys.stderr.write("{0}:{1}:{2}: semantic error:  main method has to be of type int32".format(self.file_name, i[2], i[3]))
+                        sys.stderr.write("{0}:{1}:{2}: semantic error:  main method has to be of type int32\n".format(self.file_name, i[2], i[3]))
                         sys.exit(1)
                     elif len(self.formals[("Main", "main")]) > 0:
-                        sys.stderr.write("{0}:{1}:{2}: semantic error:  main method should have no arguments".format(self.file_name, i[2], i[3]))
+                        sys.stderr.write("{0}:{1}:{2}: semantic error:  main method should have no arguments\n".format(self.file_name, i[2], i[3]))
                         sys.exit(1)
                     return
 
-            sys.stderr.write("{0}:{1}:{2}: semantic error: No main method in Main".format(self.file_name, self.class_dict["Main"][0], self.class_dict["Main"][1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: No main method in Main\n".format(self.file_name, self.class_dict["Main"][0], self.class_dict["Main"][1]))
             sys.exit(1)
         else:
-            sys.stderr.write("{0}:1:1: semantic error: No class Main".format(self.file_name))
+            sys.stderr.write("{0}:1:1: semantic error: No class Main\n".format(self.file_name))
             sys.exit(1) 
 
     def check_cycles(self):
@@ -160,7 +160,7 @@ class ClassChecker():
                 while(self.extends.get(t) != None):
                     fieldInParent = self.field_in_class(child_field[0], self.extends[t])
                     if fieldInParent[0]:
-                        sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3} (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_field[2], child_field[3], child_field[0], fieldInParent[1][2], fieldInParent[1][3], self.extends[t]))
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3} (first defined at {4}:{5} in parent class {6}).\n".format(self.file_name, child_field[2], child_field[3], child_field[0], fieldInParent[1][2], fieldInParent[1][3], self.extends[t]))
                         sys.exit(1)
                     t = self.extends[t]
 
@@ -171,23 +171,23 @@ class ClassChecker():
                     if methodInParent[0] :
                         # check methods return types
                         if child_method[1] != methodInParent[1][1]:
-                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
+                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type (first defined at {4}:{5} in parent class {6}).\n".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
                             sys.exit(1)
                         
                         # check methods formals types and names
                         child_formals = self.formals[(i,child_method[0])]
                         parent_formals = self.formals[(self.extends[t], methodInParent[1][0])]
                         if len(child_formals) != len(parent_formals):
-                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different formal size (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
+                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different formal size (first defined at {4}:{5} in parent class {6}).\n".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
                             sys.exit(1)
                         for index in range(0,len(child_formals)):
                             # not same name
                             if child_formals[index][0] != parent_formals[index][0]:
-                                sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different name (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
+                                sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different name (first defined at {4}:{5} in parent class {6}).\n".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
                                 sys.exit(1)
                             # not same type
                             elif child_formals[index][1] != parent_formals[index][1]:
-                                sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different typ (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
+                                sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different typ (first defined at {4}:{5} in parent class {6}).\n".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
                                 sys.exit(1)
                     t = self.extends[t]
         return
@@ -197,7 +197,7 @@ class ClassChecker():
             try:
                 self.class_dict[self.extends[i]]
             except:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: parent {3} doesn't exist".format(self.file_name, self.class_dict[i][0], self.class_dict[i][1], self.extends[i]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: parent {3} doesn't exist\n".format(self.file_name, self.class_dict[i][0], self.class_dict[i][1], self.extends[i]))
                 sys.exit(1)
         return 
     
@@ -206,7 +206,7 @@ class ClassChecker():
             for field in self.fields_dict[i]:
                 if field[1] not in self.class_dict:
                     if field[1] != "int32" and field[1] != "bool" and field[1] != "string" and field[1] != "unit":
-                        sys.stderr.write("{0}:{1}:{2}: semantic error: use of undefined type {3}".format(self.file_name, field[2], field[3], field[1]))
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: use of undefined type {3}\n".format(self.file_name, field[2], field[3], field[1]))
                         sys.exit(1)
 
 
@@ -232,7 +232,7 @@ class ClassChecker():
         '''class : field
                 | method'''
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class\n".format(self.file_name, p.lineno(1) + 1, colno))
         sys.exit(1)
 
     def p_class_error(self, p):
@@ -245,7 +245,7 @@ class ClassChecker():
                 | TYPE_IDENTIFIER
                 | block'''
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword\n".format(self.file_name, p.lineno(1) + 1, colno))
         sys.exit(1)
 
     def p_class(self, p):
@@ -267,10 +267,10 @@ class ClassChecker():
         p[0] = p[1]
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         if p[1] in self.class_dict:
-            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, first defined at {4}:{5}".format(self.file_name, p.lineno(1) + 1, colno, p[1], self.class_dict[p[1]][0], self.class_dict[p[1]][1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, first defined at {4}:{5}\n".format(self.file_name, p.lineno(1) + 1, colno, p[1], self.class_dict[p[1]][0], self.class_dict[p[1]][1]))
             sys.exit(1)
         elif p[1] == "Object":
-            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, class Object is already predefined".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, class Object is already predefined\n".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
             sys.exit(1)
 
         self.current_class = p[1]
@@ -314,12 +314,11 @@ class ClassChecker():
         for i in self.fields_dict[self.current_class]:
             if i[0] == p[1]:
                 colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3}, first defined at {4}:{5}".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3}, first defined at {4}:{5}\n".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
                 sys.exit(1)
         fields_list = self.fields_dict[self.current_class]
         fields_list.append((p[1],p[3], p.lineno(1), colno))
         self.fields_dict.update({self.current_class: fields_list})
-        # print("fields dict: " + str(self.fields_dict))
 
 
     def p_method(self, p):
@@ -329,7 +328,6 @@ class ClassChecker():
         methods_list = self.methods_dict[self.current_class]
         methods_list.append((p[1],p[6], p.lineno(1), colno))
         self.methods_dict.update({self.current_class: methods_list})
-        #print("methods dict: " + str(self.methods_dict))
 
     def p_new_method(self,p):
         'new_method : OBJECT_IDENTIFIER'
@@ -338,11 +336,10 @@ class ClassChecker():
         for i in self.methods_dict[self.current_class]:
             if i[0] == p[1]:
                 colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of method {3}, first defined at {4}:{5}".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of method {3}, first defined at {4}:{5}\n".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
                 sys.exit(1)
         self.current_method = p[1]
         self.formals.update({(self.current_class, p[1]) : []})
-        #print(self.formals)
 
     def p_new_variables_scope(self, p):
         "new_variables_scope :"
@@ -373,7 +370,7 @@ class ClassChecker():
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         for i in self.formals[(self.current_class, self.current_method)]:
             if i[0] == p[1]:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: {3} method has several formal arguments with the same name,\n redefinition of formal {4}, first defined at {5}:{6}".format(self.file_name, p.lineno(1) + 1, colno,self.current_method ,p[1], i[2], i[3]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: {3} method has several formal arguments with the same name,\n redefinition of formal {4}, first defined at {5}:{6}\n".format(self.file_name, p.lineno(1) + 1, colno,self.current_method ,p[1], i[2], i[3]))
                 sys.exit(1)
         formals_list = self.formals[(self.current_class, self.current_method)]
         formals_list.append((p[1],p[3], p.lineno(1), colno))
@@ -556,7 +553,7 @@ class ClassChecker():
             except:
                 lastline = [1]
             colno = len(lastline)
-            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces".format(self.file_name, nlines, colno))
+            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces\n".format(self.file_name, nlines, colno))
             sys.exit(1)
         else:
             colno = self.find_column(self.string_text, p)

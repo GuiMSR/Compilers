@@ -159,7 +159,7 @@ class VsopParser2():
         '''class : field
                 | method'''
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class\n".format(self.file_name, p.lineno(1) + 1, colno))
         sys.exit(1)
 
     def p_class_error(self, p):
@@ -172,7 +172,7 @@ class VsopParser2():
                 | TYPE_IDENTIFIER
                 | block'''
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword\n".format(self.file_name, p.lineno(1) + 1, colno))
         sys.exit(1)
 
     def p_class(self, p):
@@ -230,7 +230,7 @@ class VsopParser2():
             expr_type = self.expressions_stack.pop()
             if not self.compare_types(p[3], expr_type):
                 colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: expression does not conform to type {3}".format(self.file_name, p.lineno(0) + 1, colno, p[3]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: expression does not conform to type {3}\n".format(self.file_name, p.lineno(0) + 1, colno, p[3]))
                 sys.exit(1)
 
 
@@ -258,7 +258,7 @@ class VsopParser2():
                 | UNIT '''
         if p[1] not in ["int32", "bool", "string", "unit"] and self.fields_dict.get(p[1]) == None:
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: use of undefined type {3}".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: use of undefined type {3}\n".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
             sys.exit(1)
         p[0] = p[1]
 
@@ -343,7 +343,7 @@ class VsopParser2():
         "check_same_let :"
         colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
         if not self.compare_types(self.left_type[-1], self.right_type[-1]):
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1], self.right_type[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}\n".format(self.file_name, p.lineno(0) + 1, colno, self.left_type[-1], self.right_type[-1]))
             sys.exit(1)
         p[0] = ''
 
@@ -381,7 +381,7 @@ class VsopParser2():
         colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
         var_type = self.expressions_stack[-1]
         if(var_type != "int32"):
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(0) + 1, colno, var_type))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}\n".format(self.file_name, p.lineno(0) + 1, colno, var_type))
             sys.exit(1)
         p[0] = ''
 
@@ -390,7 +390,7 @@ class VsopParser2():
         colno = p.lexpos(0) - self.string_text.rfind('\n', 0, p.lexpos(0))
         var_type = self.expressions_stack[-1]
         if(var_type != "bool"):
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(0) + 1, colno, var_type))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}\n".format(self.file_name, p.lineno(0) + 1, colno, var_type))
             sys.exit(1)
         p[0] = ''
 
@@ -405,7 +405,7 @@ class VsopParser2():
         'expression : expression store_left EQUAL expression'
         if not self.compare_types(self.left_type[-1], self.expressions_stack[-1]):
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1], self.expressions_stack[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}\n".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1], self.expressions_stack[-1]))
             sys.exit(1)
         self.left_type.pop()
         self.expressions_stack[-1] = "bool"
@@ -418,11 +418,11 @@ class VsopParser2():
         'expression : expression store_left AND expression'
         if(self.left_type[-1] != "bool"):
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}\n".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1]))
             sys.exit(1)
         if(self.expressions_stack[-1] != "bool"):
             colno = p.lexpos(4) - self.string_text.rfind('\n', 0, p.lexpos(4))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}".format(self.file_name, p.lineno(1) + 1, colno, self.expressions_stack[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type bool but found {3}\n".format(self.file_name, p.lineno(1) + 1, colno, self.expressions_stack[-1]))
             sys.exit(1)
         self.left_type.pop()
         if len(self.block_type) > 0:
@@ -437,11 +437,11 @@ class VsopParser2():
                   | expression store_left POW expression'''
         if(self.left_type[-1] != "int32"):
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}\n".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1]))
             sys.exit(1)
         if(self.expressions_stack[-1] != "int32"):
             colno = p.lexpos(4) - self.string_text.rfind('\n', 0, p.lexpos(4))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(1) + 1, colno, self.expressions_stack[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}\n".format(self.file_name, p.lineno(1) + 1, colno, self.expressions_stack[-1]))
             sys.exit(1)
         self.left_type.pop()
         if len(self.block_type) > 0:
@@ -453,11 +453,11 @@ class VsopParser2():
                     | expression store_left LOWER expression'''
         if(self.left_type[-1] != "int32"):
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}\n".format(self.file_name, p.lineno(1) + 1, colno, self.left_type[-1]))
             sys.exit(1)
         if(self.expressions_stack[-1] != "int32"):
             colno = p.lexpos(4) - self.string_text.rfind('\n', 0, p.lexpos(4))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}".format(self.file_name, p.lineno(1) + 1, colno, self.expressions_stack[-1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: expected type int32 but found {3}\n".format(self.file_name, p.lineno(1) + 1, colno, self.expressions_stack[-1]))
             sys.exit(1)
         self.left_type.pop()
         self.expressions_stack[-1] = "bool"
@@ -499,7 +499,7 @@ class VsopParser2():
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
             method_type = self.type_of_method(self.current_class, p[1])
             if method_type is None:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} not defined in this scope".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} not defined in this scope\n".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
                 sys.exit(1)
             if len(self.expressions_stack) > 0:
                 self.expressions_stack[-1] = method_type
@@ -510,11 +510,11 @@ class VsopParser2():
             colno = p.lexpos(3) - self.string_text.rfind('\n', 0, p.lexpos(3))
             t = self.expressions_stack[-1]
             if t is None:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: object {3} is not a class".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: object {3} is not a class\n".format(self.file_name, p.lineno(3) + 1, colno, p[1]))
                 sys.exit(1)
             method_type = self.type_of_method(t, p[3])
             if method_type is None:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} is not part of class {4}".format(self.file_name, p.lineno(3) + 1, colno, p[3], t))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: method {3} is not part of class {4}\n".format(self.file_name, p.lineno(3) + 1, colno, p[3], t))
                 sys.exit(1)
             if len(self.expressions_stack) > 0:
                 self.expressions_stack[-1] = method_type
@@ -535,7 +535,7 @@ class VsopParser2():
         t = self.search_type(p[1])
         if t is None:
             colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-            sys.stderr.write("{0}:{1}:{2}: semantic error: an identifier is used that is not defined in the scope".format(self.file_name, p.lineno(1) + 1, colno))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: an identifier is used that is not defined in the scope\n".format(self.file_name, p.lineno(1) + 1, colno))
             sys.exit(1)
         p[0] = p[1] + " : " + t
         if len(self.expressions_stack) > 0:
@@ -639,7 +639,7 @@ class VsopParser2():
             except:
                 lastline = [1]
             colno = len(lastline)
-            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces".format(self.file_name, nlines, colno))
+            sys.stderr.write("{0}:{1}:{2}: syntax error: end of file reached without closing braces\n".format(self.file_name, nlines, colno))
             sys.exit(1)
         else:
             colno = self.find_column(self.string_text, p)

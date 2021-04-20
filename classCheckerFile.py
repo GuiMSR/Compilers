@@ -138,6 +138,9 @@ class ClassChecker():
         if error:
             sys.exit(1)
         return 
+
+    def compute_line(self, p, index):
+        return p.lineno(index) - (self.string_text.count('\n') * 2)
     
     def method_in_class(self, method_id, class_id):
         for method in self.methods_dict[class_id]:
@@ -232,7 +235,7 @@ class ClassChecker():
         '''class : field
                 | method'''
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class\n".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: field or method outside of class\n".format(self.file_name, self.compute_line(p, 1), colno))
         sys.exit(1)
 
     def p_class_error(self, p):
@@ -245,7 +248,7 @@ class ClassChecker():
                 | TYPE_IDENTIFIER
                 | block'''
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword\n".format(self.file_name, p.lineno(1) + 1, colno))
+        sys.stderr.write("{0}:{1}:{2}: syntax error: expected class keyword\n".format(self.file_name, self.compute_line(p, 1), colno))
         sys.exit(1)
 
     def p_class(self, p):
@@ -267,14 +270,14 @@ class ClassChecker():
         p[0] = p[1]
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         if p[1] in self.class_dict:
-            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, first defined at {4}:{5}\n".format(self.file_name, p.lineno(1) + 1, colno, p[1], self.class_dict[p[1]][0], self.class_dict[p[1]][1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, first defined at {4}:{5}\n".format(self.file_name, self.compute_line(p, 1), colno, p[1], self.class_dict[p[1]][0], self.class_dict[p[1]][1]))
             sys.exit(1)
         elif p[1] == "Object":
-            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, class Object is already predefined\n".format(self.file_name, p.lineno(1) + 1, colno, p[1]))
+            sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of class {3}, class Object is already predefined\n".format(self.file_name, self.compute_line(p, 1), colno, p[1]))
             sys.exit(1)
 
         self.current_class = p[1]
-        self.class_dict.update({p[1] : (p.lineno(1), colno)})
+        self.class_dict.update({p[1] : (self.compute_line(p, 1), colno)})
         self.methods_dict.update({p[1] : []})
         self.fields_dict.update({p[1] : []})
 
@@ -314,10 +317,10 @@ class ClassChecker():
         for i in self.fields_dict[self.current_class]:
             if i[0] == p[1]:
                 colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3}, first defined at {4}:{5}\n".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3}, first defined at {4}:{5}\n".format(self.file_name, self.compute_line(p, 1), colno, p[1], i[2], i[3]))
                 sys.exit(1)
         fields_list = self.fields_dict[self.current_class]
-        fields_list.append((p[1],p[3], p.lineno(1), colno))
+        fields_list.append((p[1],p[3], self.compute_line(p, 1), colno))
         self.fields_dict.update({self.current_class: fields_list})
 
 
@@ -326,7 +329,7 @@ class ClassChecker():
         p[0] = "Method(" + p[1] + ", [" + p[3] + "], " + p[6] + ", " + p[7] + ")"
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         methods_list = self.methods_dict[self.current_class]
-        methods_list.append((p[1],p[6], p.lineno(1), colno))
+        methods_list.append((p[1],p[6], self.compute_line(p, 2), colno))
         self.methods_dict.update({self.current_class: methods_list})
 
     def p_new_method(self,p):
@@ -336,7 +339,7 @@ class ClassChecker():
         for i in self.methods_dict[self.current_class]:
             if i[0] == p[1]:
                 colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
-                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of method {3}, first defined at {4}:{5}\n".format(self.file_name, p.lineno(1) + 1, colno, p[1], i[2], i[3]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of method {3}, first defined at {4}:{5}\n".format(self.file_name, self.compute_line(p, 1), colno, p[1], i[2], i[3]))
                 sys.exit(1)
         self.current_method = p[1]
         self.formals.update({(self.current_class, p[1]) : []})
@@ -370,10 +373,10 @@ class ClassChecker():
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         for i in self.formals[(self.current_class, self.current_method)]:
             if i[0] == p[1]:
-                sys.stderr.write("{0}:{1}:{2}: semantic error: {3} method has several formal arguments with the same name,\n redefinition of formal {4}, first defined at {5}:{6}\n".format(self.file_name, p.lineno(1) + 1, colno,self.current_method ,p[1], i[2], i[3]))
+                sys.stderr.write("{0}:{1}:{2}: semantic error: {3} method has several formal arguments with the same name,\n redefinition of formal {4}, first defined at {5}:{6}\n".format(self.file_name, self.compute_line(p, 1), colno,self.current_method ,p[1], i[2], i[3]))
                 sys.exit(1)
         formals_list = self.formals[(self.current_class, self.current_method)]
-        formals_list.append((p[1],p[3], p.lineno(1), colno))
+        formals_list.append((p[1],p[3], self.compute_line(p, 1), colno))
         self.formals.update({(self.current_class, self.current_method): formals_list})
 
     def p_block(self, p): 

@@ -160,33 +160,36 @@ class ClassChecker():
                 while(self.extends.get(t) != None):
                     fieldInParent = self.field_in_class(child_field[0], self.extends[t])
                     if fieldInParent[0]:
-                        sys.stderr.write("{0}:{1}:{2}: redefinition of field {3} (first defined at {4}:{5} in parent class{6}).".format(self.file_name, child_field[2], child_field[3], child_field[0], fieldInParent[1][2], fieldInParent[1][3], self.extends[i]))
+                        sys.stderr.write("{0}:{1}:{2}: semantic error: redefinition of field {3} (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_field[2], child_field[3], child_field[0], fieldInParent[1][2], fieldInParent[1][3], self.extends[t]))
                         sys.exit(1)
                     t = self.extends[t]
 
             for child_method in self.methods_dict[i]:
-                methodInParent = self.method_in_class(child_method[0], self.extends[i])
-                if methodInParent[0] :
-                    # check methods return types
-                    if child_method[1] != methodInParent[1][1]:
-                        sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type".format(self.file_name, child_method[2], child_method[3], child_method[0]))
-                        sys.exit(1)
-                    
-                    # check methods formals types and names
-                    child_formals = self.formals[(i,child_method[0])]
-                    parent_formals = self.formals[(self.extends[i], methodInParent[1][0])]
-                    if len(child_formals) != len(parent_formals):
-                        sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different formal size".format(self.file_name, child_method[2], child_method[3], child_method[0]))
-                        sys.exit(1)
-                    for index in range(0,len(child_formals)):
-                        # not same name
-                        if child_formals[index][0] != parent_formals[index][0]:
-                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different name".format(self.file_name, child_method[2], child_method[3], child_method[0]))
+                t = i
+                while(self.extends.get(t) != None):
+                    methodInParent = self.method_in_class(child_method[0], self.extends[t])
+                    if methodInParent[0] :
+                        # check methods return types
+                        if child_method[1] != methodInParent[1][1]:
+                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
                             sys.exit(1)
-                        # not same type
-                        elif child_formals[index][1] != parent_formals[index][1]:
-                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different type".format(self.file_name, child_method[2], child_method[3], child_method[0]))
+                        
+                        # check methods formals types and names
+                        child_formals = self.formals[(i,child_method[0])]
+                        parent_formals = self.formals[(self.extends[t], methodInParent[1][0])]
+                        if len(child_formals) != len(parent_formals):
+                            sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different formal size (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
                             sys.exit(1)
+                        for index in range(0,len(child_formals)):
+                            # not same name
+                            if child_formals[index][0] != parent_formals[index][0]:
+                                sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different name (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
+                                sys.exit(1)
+                            # not same type
+                            elif child_formals[index][1] != parent_formals[index][1]:
+                                sys.stderr.write("{0}:{1}:{2}: semantic error: overrinding method {3} with different typ (first defined at {4}:{5} in parent class {6}).".format(self.file_name, child_method[2], child_method[3], child_method[0], methodInParent[1][2], methodInParent[1][3], self.extends[t]))
+                                sys.exit(1)
+                    t = self.extends[t]
         return
 
     def check_extends_parents(self):

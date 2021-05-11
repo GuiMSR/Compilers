@@ -12,7 +12,7 @@ import sys
 import syntax_tree as st
 
 
-class VsopParser2():
+class VsopParser2V2():
 
 
     def __init__(self, lexer, file_name, string_text, dictionaries):
@@ -254,6 +254,10 @@ class VsopParser2():
                 pos = p[3].position
                 sys.stderr.write("{0}:{1}:{2}: semantic error: expression does not conform to type {3}\n".format(self.file_name, pos[0], pos[1], p[1].type))
                 sys.exit(1)
+            # if p[3].name == "assign":
+            #     pos = p[3].position
+            #     sys.stderr.write("{0}:{1}:{2}: semantic error: use of unbound variable\n".format(self.file_name, pos[0], pos[1]))
+            #     sys.exit(1)
         self.inside_field = False
 
     def p_field_identifier(self, p):
@@ -270,6 +274,11 @@ class VsopParser2():
             pos = p[7].position
             sys.stderr.write("{0}:{1}:{2}: semantic error: resulting type of this block is {3}, but expected type was {4}\n".format(self.file_name, pos[0], pos[1], p[7].type, p[6]))
             sys.exit(1)
+        # if p[7].children[-1].name == "assign":
+        #     pos = p[7].children[-1].position
+        #     var = p[7].children[-1].children[0].values[0]
+        #     sys.stderr.write("{0}:{1}:{2}: semantic error: use of unbound variable {3}\n".format(self.file_name, pos[0], pos[1], var))
+        #     sys.exit(1)
         del self.formals[-1]
         self.variables_list.pop()
 

@@ -13,6 +13,7 @@ from parserFile import VsopParser
 from semanticsFile import VsopParser2
 from classCheckerFile import ClassChecker
 import warnings
+import syntax_tree
 
 
 warnings.filterwarnings("ignore")
@@ -60,14 +61,15 @@ def main():
     if(args.parsing == 1):
         parser = VsopParser(VsopLexer, text_file_name, string_text)
         parsed = parser.parser.parse(string_text)
-        print(parsed)
+        print(syntax_tree.print_tree(parsed, 0))
 
     if(args.semantics == 1):
         checker = ClassChecker(VsopLexer, text_file_name, string_text)
         dictionaries = checker.parser.parse(string_text)
         parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
         parsed = parser.parser.parse(string_text)
-        print(parsed)
+        syntax_tree.set_parent_nodes(parsed, None)
+        print(syntax_tree.print_tree(parsed, 1))
 
 
     

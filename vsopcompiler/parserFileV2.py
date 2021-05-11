@@ -12,7 +12,7 @@ import sys
 import syntax_tree as st
 
 
-class VsopParser():
+class VsopParserV2():
 
 
     def __init__(self, lexer, file_name, string_text):

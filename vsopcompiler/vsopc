@@ -9,9 +9,11 @@ Created on Tue Feb  9 17:53:55 2021
 import argparse
 import sys
 from lexer import VsopLexer
-from parserFile import VsopParser
-from semanticsFile import VsopParser2
+from parserFileV2 import VsopParserV2
+from semanticsFileV2 import VsopParser2V2
+from classCheckerFile import ClassChecker
 import warnings
+import syntax_tree
 
 
 warnings.filterwarnings("ignore")
@@ -57,22 +59,18 @@ def main():
                 sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
     # Parser initialisation
     if(args.parsing == 1):
-        parser = VsopParser(VsopLexer, text_file_name, string_text)
-
+        parser = VsopParserV2(VsopLexer, text_file_name, string_text)
         parsed = parser.parser.parse(string_text)
-        # if(isinstance(parsed, str)):
-        #     print(parsed.replace('])', '])\n'))
-        # else:
-        print(parsed)
+        print(syntax_tree.print_tree(parsed, 0))
 
     if(args.semantics == 1):
-        parser = VsopParser2(VsopLexer, text_file_name, string_text)
-
+        checker = ClassChecker(VsopLexer, text_file_name, string_text)
+        dictionaries = checker.parser.parse(string_text)
+        parser = VsopParser2V2(VsopLexer, text_file_name, string_text, dictionaries)
         parsed = parser.parser.parse(string_text)
-        # if(isinstance(parsed, str)):
-        #     print(parsed.replace('])', '])\n'))
-        # else:
-        print(parsed)
+        syntax_tree.set_parent_nodes(parsed, None)
+        print(syntax_tree.print_tree(parsed, 1))
+
 
     
 

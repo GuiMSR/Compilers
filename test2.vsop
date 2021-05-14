@@ -1,4 +1,6 @@
-class MyClass {
-    myMethod(b : bool) : bool { x <- true }
+class Main {
+    main() : int32 {
+        print("Hello, world!\n");
+        0
+    }
 }
-class Main { main() : int32 { 0 } }

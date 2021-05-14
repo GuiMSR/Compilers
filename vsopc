@@ -5,15 +5,19 @@ Created on Tue Feb  9 17:53:55 2021
 
 @author: Guilherme Madureira & Julien Carion
 """
-
 import argparse
 import sys
+
+from llvmlite import ir
 from lexer import VsopLexer
 from parserFile import VsopParser
 from semanticsFile import VsopParser2
+from generationFile import VsopParser3
 from classCheckerFile import ClassChecker
+from codegen import CodeGen
 import warnings
 import syntax_tree
+import syntax_tree_gen
 
 
 warnings.filterwarnings("ignore")
@@ -22,8 +26,9 @@ def main():
     argParser = argparse.ArgumentParser()
     mode = argParser.add_mutually_exclusive_group()
     mode.add_argument('-l', '--showTks', action="store_true", help="Show tokens from lexical analysis")
-    mode.add_argument('-p', '--parsing', action="store_true", help="Don't show tokens from lexcial analysis")
+    mode.add_argument('-p', '--parsing', action="store_true", help="Don't show tokens from lexical analysis")
     mode.add_argument('-c', '--semantics', action="store_true", help="Add semantics to parsing analysis")
+    mode.add_argument('-i', '--generation', action="store_true", help="Outputs textual LLVM IR")
     argParser.add_argument("source_file", help="Path to the VSOP source code")
     args = argParser.parse_args()
 
@@ -70,6 +75,21 @@ def main():
         parsed = parser.parser.parse(string_text)
         syntax_tree.set_parent_nodes(parsed, None)
         print(syntax_tree.print_tree(parsed, 1))
+
+    if(args.generation == 1):
+        codegen = CodeGen()
+        print(str(codegen.module)[:200])
+        checker = ClassChecker(VsopLexer, text_file_name, string_text)
+        dictionaries = checker.parser.parse(string_text)
+        parser = VsopParser3(VsopLexer, text_file_name, string_text, dictionaries, codegen.module, None)
+        parsed = parser.parser.parse(string_text)
+        syntax_tree_gen.set_parent_nodes(parsed, None)
+        module = syntax_tree_gen.compile_program(parsed, dictionaries)
+        codegen.print_ir_only(module)
+
+        #codegen.save_ir("output.ll")
+
+
 
 
     

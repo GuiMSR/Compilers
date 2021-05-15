@@ -83,7 +83,7 @@ def main():
         syntax_tree.set_parent_nodes(parsed, None)
         codegen = CodeGen(parsed, dictionaries)
         codegen.codeGeneration()
-        print(str(codegen.module))
+        #print(codegen.module)
 
         #codegen.save_ir("output.ll")
 

@@ -1,7 +1,8 @@
 from llvmlite import ir, binding
 import sys
+from llvmlite.ir import context
 
-
+from llvmlite.ir.values import GlobalVariable
 
 
 class variableScope():
@@ -53,6 +54,8 @@ class CodeGen():
             }
 
         self.dict = {'Object': {}}
+        mallocType = ir.FunctionType(ir.IntType(8).as_pointer(), [ir.IntType(64)])
+        self.malloc = ir.Function(self.module, mallocType, name='malloc')
         self.compile_object()
         self.compile_classes()
         self.module = self.compile_program(self.tree)
@@ -140,14 +143,22 @@ class CodeGen():
             i = ir.VoidType
             return i
 
-        if node.name == "object identifier":
+        if node.name == "object identifier" or node.name == "self":
 
             ptr = scope.getValue(node.values[0])
 
             if ptr is not None:
                 value = builder.load(ptr)
+            else:
+                field = self.dict[node.node_class]['fields'].get(node.values[0])
+                temp = list(self.dict[node.node_class]['fields'].items()) 
+                index = [idx for idx, key in enumerate(temp) if key[0] == node.values[0]]
+                selfPtr = scope.getValue(node.node_class)
+                ld = builder.load(selfPtr)
+                fctType = builder.gep(ld, [self.types['int32'](0), self.types['int32'](index[0])], inbounds=True)
+                value = builder.load(fctType)
 
-            return 
+            return value
 
     def print_list(self, node, with_types):
         strings = []
@@ -156,8 +167,13 @@ class CodeGen():
         return "[" + ', '.join(strings) + "]"
 
     def compile_block(self, node, builder, scope):
+        scope.addScope()
+
         for child in node.children:
             i =  self.compile_tree(child, builder, scope)
+        
+        scope.removeScope()
+        print(self.module)
         return i
 
     def print_new_type(self, node, with_types):
@@ -188,10 +204,7 @@ class CodeGen():
         args = self.compile_args(node.children[2], builder, scope)
 
         # Recover self argument and function arguments casts
-        name = method_list[1].name
-        name = name.partition("__")[0]
-        classPtr = self.dict[name]["struct"]
-        value = builder.load(classPtr)
+        value = self.compile_tree(node.children[0], builder, scope)
         cast = builder.bitcast(value, method_list[1].args[0].type)
         fct_args = [cast]
 
@@ -373,8 +386,10 @@ class CodeGen():
         # Set class structure body
         classBody = [classVT.as_pointer()]
         classVTbody = []
+        classMethods = []
 
         # Deep copy from parent class
+        self.dict[class_name] = self.dict[self.extends[class_name]].copy()
         self.dict[class_name]['methods'].update(self.dict[self.extends[class_name]]['methods'].copy())
         self.dict[class_name]['fields'].update(self.dict[self.extends[class_name]]['fields'].copy())
 
@@ -384,25 +399,34 @@ class CodeGen():
 
         for key in self.dict[self.extends[class_name]]['methods'].keys():
             self.dict[class_name]['methods'][key] = self.dict[self.extends[class_name]]['methods'][key].copy()
-            classVTbody.append(self.dict[self.extends[class_name]]['methods'][key][0].copy())
+            #classVTbody.append(self.dict[self.extends[class_name]]['methods'][key][0])
 
         # Set class methods inside dictionary and classVT body list
         if len(self.methods_dict[class_name]) == 0:
             self.dict[class_name]['methods'] = {}
         else:
             for method in self.methods_dict[class_name]:
-                returnType = self.types[method[1]]
+                if method[1] in self.types:
+                    returnType = self.types[method[1]]
+                else:
+                    returnType = self.dict[method[1]]['struct']
+
                 argsType  = [classStruct.as_pointer()]
-                for arg in self.formals_dict[(class_name,method)]:
+                for arg in self.formals_dict[(class_name, method[0])]:
                     if arg[1] in self.types:
                         argsType.append(self.types[arg[1]])
                     else:
                         argsType.append(self.dict[arg[1]]['struct'])
                 
                 typeMethod = ir.FunctionType(returnType.as_pointer(), argsType)
-                classMethod = ir.Function(self.module, typeMethod, name=class_name+"__"+method)
+                if method[0] == "main":
+                    classMethod = ir.Function(self.module, typeMethod, name="main")
+                else:
+                    classMethod = ir.Function(self.module, typeMethod, name=class_name+"__"+method[0])
+
                 classVTbody.append(typeMethod.as_pointer())
-                self.dict[class_name]['methods'].update({method : [typeMethod, classMethod]})
+                classMethods.append(classMethod)
+                self.dict[class_name]['methods'].update({method[0] : [typeMethod, classMethod]})
 
         # Set class fields in dictionary
         if len(self.fields_dict[class_name]) == 0:
@@ -434,19 +458,91 @@ class CodeGen():
         self.dict[class_name]['init'] = initFct
 
 
-        #New instantiation and block builder
+        # New initialization and block builder
         block = newFct.append_basic_block()
         builder = ir.IRBuilder(block)
+
+        nullSize = ir.Constant(self.dict[class_name]['struct'], None)
+        sizePtr = builder.gep(nullSize, [self.types["int32"](1)], inbounds=False, name="size_ptr")
+        sizeI64 = builder.ptrtoint(sizePtr, ir.IntType(64), name="size_i64")
+
+        mallocPtr = builder.call(self.malloc, [sizeI64])
+        cast = builder.bitcast(mallocPtr, self.dict[class_name]['struct'])
+        ret_val = builder.call(initFct, [cast])
+        builder.ret(ret_val)
+
+        # Init initialization and block builder
+        block = initFct.append_basic_block()
+        builder = ir.IRBuilder(block)
+
+        arg = initFct.args[0]
+        with builder.if_then(builder.icmp_unsigned('!=', arg, nullSize)):
+
+            # .super function from parent
+            cast = builder.bitcast(arg, self.dict[class_name]['struct'])
+            call = builder.call(self.dict[class_name]['init'], [cast])
+
+            # Vtable
+            ptr = builder.gep(arg, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
+            value = ir.Constant(self.dict[class_name]['VTstruct'], classMethods)
+            classVTable = ir.GlobalVariable(self.module, self.dict[class_name]['VTstruct'], name=class_name+'_vtable')
+            classVTable.global_constant = True
+            classVTable.initializer = value
+            builder.store(classVTable, ptr)
+        
+            # Initialize fields
+
+            # Get parent's fields number
+            l = len(self.dict[self.extends[class_name]]['fields']) + 1
+            for child in self.tree.children:
+                if child.values[0] == class_name:
+                    classNode = child
+
+            for i, field in enumerate(classNode.children[0].children):
+
+                fieldPtr = builder.gep(arg, [self.types['int32'](0), self.types['int32'](l+i)])
+                if len(field.children) == 2:
+
+                    # Recovers value in tree if assign
+                    value = self.compile_tree(field.children[1], builder, variableScope())
+                    ldPtr = builder.load(fieldPtr)
+                    cast = builder.bitcast(value, ldPtr.type)
+                    builder.store(cast, fieldPtr)
+                
+                else:
+                    if field.type == 'int32':
+                        builder.store(self.types['int32'](0), fieldPtr)
+                    
+                    elif field.type == 'bool':
+                        builder.store(self.types['bool'](0), fieldPtr)
+                    
+                    elif field.type == 'string':
+                        cst = ir.Constant(ir.ArrayType(ir.IntType(8), len(chr(0))), bytearray(chr(0).encode('utf8')))
+                        globalStr = ir.GlobalVariable(self.module, cst.type, self.module.get_unique_name('string'))
+                        globalStr.global_constant = True
+                        globalStr.initializer = cst
+
+                        strPtr = builder.gep(globalStr, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
+                        builder.store(strPtr, fieldPtr)
+                    
+                    else:
+                        nullPtr = ir.Constant(self.dict[class_name]['fields'][field.children[0].values[0]][0], None)
+                        builder.store(nullPtr, fieldPtr)
+
+        builder.ret(arg)
 
 
     def compile_main(self, node):
         scope = variableScope()
-        
-        fnty = ir.FunctionType(ir.IntType(32), [], False)
-        func = ir.Function(self.module, fnty, name="main")
-
-        block = func.append_basic_block(name="entry")
+        block = self.dict["Main"]["methods"]["main"][1].append_basic_block(name="entry")
         builder = ir.IRBuilder(block)
+        
+        main = builder.call(self.dict['Main']['new'], [])
+        args = self.dict["Main"]["methods"]["main"][1].args
+        ptr = builder.alloca(args[0].type)
+        builder.store(main, ptr)
+
+        scope.addVariable('self', ptr)
         builder.ret(self.compile_tree(node.children[2], builder, scope))
 
 
@@ -454,7 +550,8 @@ class CodeGen():
         for child in node.children:
             if child.values[0] == "Main":
                 self.compile_main(child.children[1].children[0])
-        return self.module
+        
+        print("Generation done.")
 
 
     def compile_extends(self, class_name):

@@ -3,6 +3,30 @@ import sys
 
 
 
+
+class variableScope():
+
+    # Create new scope for each field and method
+
+    def __init__(self):
+        self.scopes = [{}]
+
+    def addScope(self):
+        self.scopes.append({})
+    
+    def removeScope(self):
+        self.scopes.pop()
+    
+    def addVariable(self, key, value):
+        self.scopes[-1][key] = value
+
+    def getValue(self, key):
+        for d in reversed(self.scopes):
+            if d.get(key) != None:
+                return d[key]
+        return None
+
+
 class CodeGen():
 
     def __init__(self, parsed_tree, dictionaries):
@@ -34,7 +58,7 @@ class CodeGen():
         self.module = self.compile_program(self.tree)
 
 
-    # Declare Object and other class functions here for simplicity
+
 
     def save_ir(self, filename):
         with open(filename, "w") as output:
@@ -68,7 +92,7 @@ class CodeGen():
         self.engine.run_static_constructors()
 
     
-    def compile_tree(self, node, builder):
+    def compile_tree(self, node, builder, scope):
         switcher = {
             "boolean literal": self.compile_expression,
             "integer literal": self.compile_expression,
@@ -93,10 +117,10 @@ class CodeGen():
             "methods": self.print_list,
             "fields": self.print_list
         }    
-        i = switcher[node.name](node, builder)
+        i = switcher[node.name](node, builder, scope)
         return i
 
-    def compile_expression(self, node, builder):
+    def compile_expression(self, node, builder, scope):
 
         if node.name == "boolean literal":
             value = 0 if node.values[0] == 'false' else 1
@@ -116,23 +140,14 @@ class CodeGen():
             i = ir.VoidType
             return i
 
-        if node.name == "self":
-            # To do
-            return 
-
         if node.name == "object identifier":
-            switcher = {
-                "int32" : ir.IntType(32),
-                "bool": ir.IntType(1),
-                "string":ir.ArrayType(ir.IntType(8), 100),
-                "unit": ir.VoidType
-            }
 
-            type = switcher.get(node.type)
-            # Add other object identifier more complex 
+            ptr = scope.getValue(node.values[0])
 
-            i = ir.GlobalVariable(self.module, type, node.values[0])
-            return i
+            if ptr is not None:
+                value = builder.load(ptr)
+
+            return 
 
     def print_list(self, node, with_types):
         strings = []
@@ -140,10 +155,9 @@ class CodeGen():
             strings.append(self.print_tree(child, with_types))
         return "[" + ', '.join(strings) + "]"
 
-    def compile_block(self, node, builder):
+    def compile_block(self, node, builder, scope):
         for child in node.children:
-            child.builder = builder
-            i =  self.compile_tree(child, builder)
+            i =  self.compile_tree(child, builder, scope)
         return i
 
     def print_new_type(self, node, with_types):
@@ -151,14 +165,14 @@ class CodeGen():
             return "New(" + node.values[0] + ") : " + node.type
         return "New(" + node.values[0] + ")"
 
-    def compile_args(self, node, builder):
+    def compile_args(self, node, builder, scope):
         args = []
         for child in node.children:
-            arg = self.compile_tree(child, builder)
+            arg = self.compile_tree(child, builder, scope)
             args.append(arg)
         return args
 
-    def compile_call(self, node, builder):
+    def compile_call(self, node, builder, scope):
 
         class_name = node.children[0].type
         method_name = node.children[1].values[0]
@@ -171,10 +185,14 @@ class CodeGen():
         # Recover function and its arguments
         fctPtr = method_list[1]
         fct = builder.load(fctPtr)
-        args = self.compile_args(node.children[2], builder)
+        args = self.compile_args(node.children[2], builder, scope)
 
         # Recover self argument and function arguments casts
-        cast = builder.bitcast(self.compile_tree(node.children[1], builder), method_list[1].args[0].type)
+        name = method_list[1].name
+        name = name.partition("__")[0]
+        classPtr = self.dict[name]["struct"]
+        value = builder.load(classPtr)
+        cast = builder.bitcast(value, method_list[1].args[0].type)
         fct_args = [cast]
 
         for i, arg in enumerate(args):
@@ -184,31 +202,31 @@ class CodeGen():
         return builder.call(fct, fct_args)
 
 
-    def compile_plus(self, node, builder):
-        return builder.add(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_plus(self, node, builder, scope):
+        return builder.add(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_sub(self, node, builder):
-        return builder.sub(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_sub(self, node, builder, scope):
+        return builder.sub(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_times(self, node, builder):
-        return builder.mul(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_times(self, node, builder, scope):
+        return builder.mul(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_div(self, node, builder):
-        return builder.udiv(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_div(self, node, builder, scope):
+        return builder.udiv(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_pow(self, node, builder): # Change op
-        return builder.udiv(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_pow(self, node, builder, scope): # Change op
+        return builder.udiv(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_comp(self, node, builder):
+    def compile_comp(self, node, builder, scope):
         if node.values[0] != "=":
-            return builder.icmp_unsigned(node.values[0], self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+            return builder.icmp_unsigned(node.values[0], self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
         else:
-            return builder.icmp_unsigned("==", self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+            return builder.icmp_unsigned("==", self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_and(self, node, builder):
-        return builder.and_(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_and(self, node, builder, scope):
+        return builder.and_(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_binop(self, node, builder):
+    def compile_binop(self, node, builder, scope):
 
         switcher = {
             "+" : self.compile_plus,
@@ -221,30 +239,30 @@ class CodeGen():
             "<" :self.compile_comp,
             "and": self.compile_and
         }
-        return switcher[node.values[0]](node, builder)
+        return switcher[node.values[0]](node, builder, scope)
 
-    def compile_not(self, node, builder):
+    def compile_not(self, node, builder, scope):
         return builder.not_(self.compile_tree(node.children[0]))
 
-    def compile_minus(self, node, builder):
+    def compile_minus(self, node, builder, scope):
         return builder.neg(self.compile_tree(node.children[0]))
 
-    def compile_isnull(self, node, builder):
+    def compile_isnull(self, node, builder, scope):
         return  # Add operation
 
-    def compile_unop(self, node, builder):
+    def compile_unop(self, node, builder, scope):
         for child in node.children:
             child.builder = builder
 
         switcher = {
-            "not" : self.compile_not(node, builder),
-            "-": self.compile_minus(node, builder),
-            "isnull": self.compile_isnull(node, builder)
+            "not" : self.compile_not(node, builder, scope),
+            "-": self.compile_minus(node, builder, scope),
+            "isnull": self.compile_isnull(node, builder, scope)
             }
-        return switcher[node.values[0]](node, builder)
+        return switcher[node.values[0]](node, builder, scope)
         
 
-    def compile_assign(self, node, builder):
+    def compile_assign(self, node, builder, scope):
         var_ptr = self.module.get_global(node.children[0].values[0]) # Gets global variable pointer (as global value)
         builder.store(self.compile_tree(node.children[1]),var_ptr)
         return 
@@ -258,7 +276,7 @@ class CodeGen():
             return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], with_types) + ", " + self.print_tree(node.children[2], with_types) +")"
         return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], with_types) +")"
 
-    def compile_while(self, node, builder):
+    def compile_while(self, node, builder, scope):
         for child in node.children:
             child.builder = builder
 
@@ -268,7 +286,7 @@ class CodeGen():
                 builder.branch(builder.block)
         return i
 
-    def compile_if(self, node, builder):
+    def compile_if(self, node, builder, scope):
         for child in node.children:
             child.builder = builder
 
@@ -286,10 +304,10 @@ class CodeGen():
         
         return i
 
-    def print_formal(self, node, builder):
+    def print_formal(self, node, builder, scope):
         return self.compile_expression(node, 1)
 
-    def compile_method(self, node, builder):
+    def compile_method(self, node, builder, scope):
         return 
     
     
@@ -407,22 +425,29 @@ class CodeGen():
         self.dict[class_name]['VTstruct'] = classVT
 
 
-        # New and init functions
+        # New and Init functions
+        newType = ir.FunctionType(classStruct.as_pointer(), [])
+        newFct = ir.Function(self.module, newType, name=class_name+'_new')
+        self.dict[class_name]['new'] = newFct
+        initType = ir.FunctionType(classStruct.as_pointer(), [classStruct.as_pointer()])
+        initFct = ir.Function(self.module, initType, name=class_name+'_init')
+        self.dict[class_name]['init'] = initFct
 
-        # newType = ir.FunctionType(classStruct.as_pointer(), [])
-        # self.dict[class]['new'] = ir.Function(self.module, newType, name=class+'__new')
-        # initType = ir.FunctionType(classStruct.as_pointer(), [classStruct.as_pointer()])
-        # self.dict[class]['init'] = ir.Function(self.module, initType, name=class+'__init')
 
+        #New instantiation and block builder
+        block = newFct.append_basic_block()
+        builder = ir.IRBuilder(block)
 
 
     def compile_main(self, node):
+        scope = variableScope()
+        
         fnty = ir.FunctionType(ir.IntType(32), [], False)
         func = ir.Function(self.module, fnty, name="main")
 
         block = func.append_basic_block(name="entry")
         builder = ir.IRBuilder(block)
-        builder.ret(self.compile_tree(node.children[2], builder))
+        builder.ret(self.compile_tree(node.children[2], builder, scope))
 
 
     def compile_program(self, node):
@@ -442,12 +467,11 @@ class CodeGen():
 
     def compile_classes(self):
         for class_name in self.extends:
-            if class_name != "Main":
-                while self.extends[class_name] not in self.dict:
-                    self.compile_extends(class_name)
-                
-                if class_name not in self.dict:
-                    self.compile_class(class_name)
+            while self.extends[class_name] not in self.dict:
+                self.compile_extends(class_name)
+            
+            if class_name not in self.dict:
+                self.compile_class(class_name)
 
 
         

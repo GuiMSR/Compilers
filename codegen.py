@@ -22,9 +22,9 @@ class CodeGen():
 
     def codeGeneration(self):
         self.types = {
-            'int32' : ir.Type(32),
+            'int32' : ir.IntType(32),
             'string': ir.IntType(8).as_pointer(),
-            'bool'  : ir.Type(1),
+            'bool'  : ir.IntType(1),
             'unit'  : ir.VoidType()
             }
 
@@ -85,7 +85,7 @@ class CodeGen():
             "let": self.print_let,
             "while": self.compile_while,
             "if": self.compile_if,
-            "block": self.print_block,
+            "block": self.compile_block,
             "formals": self.print_list,
             "formal": self.print_formal,
             "method": self.compile_method,
@@ -96,7 +96,7 @@ class CodeGen():
         i = switcher[node.name](node, builder)
         return i
 
-    def compile_expression(self, node):
+    def compile_expression(self, node, builder):
 
         if node.name == "boolean literal":
             value = 0 if node.values[0] == 'false' else 1
@@ -128,10 +128,10 @@ class CodeGen():
                 "unit": ir.VoidType
             }
 
-            type = switcher.get(node.node_type)
+            type = switcher.get(node.type)
             # Add other object identifier more complex 
 
-            i = ir.GlobalVariable(node.module, type, node.values[0])
+            i = ir.GlobalVariable(self.module, type, node.values[0])
             return i
 
     def print_list(self, node, with_types):
@@ -140,10 +140,10 @@ class CodeGen():
             strings.append(self.print_tree(child, with_types))
         return "[" + ', '.join(strings) + "]"
 
-    def print_block(self, node):
+    def compile_block(self, node, builder):
         for child in node.children:
-            child.builder = node.builder
-            i =  self.compile_tree(child)
+            child.builder = builder
+            i =  self.compile_tree(child, builder)
         return i
 
     def print_new_type(self, node, with_types):
@@ -151,21 +151,25 @@ class CodeGen():
             return "New(" + node.values[0] + ") : " + node.type
         return "New(" + node.values[0] + ")"
 
-    def compile_args(self, list, builder):
+    def compile_args(self, node, builder):
         args = []
-        for node in list:
-            arg = self.compile_tree(node, builder)
+        for child in node.children:
+            arg = self.compile_tree(child, builder)
             args.append(arg)
         return args
 
     def compile_call(self, node, builder):
 
-        class_name = node.children[0].node_type
+        class_name = node.children[0].type
         method_name = node.children[1].values[0]
-        method_list = self.dict[class_name]["methods"][method_name]
+
+        if class_name == "Main":
+            method_list = self.dict["Object"]["methods"][method_name]
+        else:
+            method_list = self.dict[class_name]["methods"][method_name]
 
         # Recover function and its arguments
-        fctPtr = method_list[2]
+        fctPtr = method_list[1]
         fct = builder.load(fctPtr)
         args = self.compile_args(node.children[2], builder)
 
@@ -180,34 +184,31 @@ class CodeGen():
         return builder.call(fct, fct_args)
 
 
-    def compile_plus(self, node):
-        return node.builder.add(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_plus(self, node, builder):
+        return builder.add(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
 
-    def compile_sub(self, node):
-        return node.builder.sub(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_sub(self, node, builder):
+        return builder.sub(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
 
-    def compile_times(self, node):
-        return node.builder.mul(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_times(self, node, builder):
+        return builder.mul(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
 
-    def compile_div(self, node):
-        return node.builder.udiv(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_div(self, node, builder):
+        return builder.udiv(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
 
-    def compile_pow(self, node): # Change op
-        return node.builder.udiv(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_pow(self, node, builder): # Change op
+        return builder.udiv(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
 
-    def compile_comp(self, node):
+    def compile_comp(self, node, builder):
         if node.values[0] != "=":
-            return node.builder.icmp_unsigned(node.values[0], self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+            return builder.icmp_unsigned(node.values[0], self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
         else:
-            return node.builder.icmp_unsigned("==", self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+            return builder.icmp_unsigned("==", self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
 
-    def compile_and(self, node):
-        return node.builder.and_(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
+    def compile_and(self, node, builder):
+        return builder.and_(self.compile_tree(node.children[0]), self.compile_tree(node.children[1]))
 
-    def compile_binop(self, node):
-
-        for child in node.children:
-            child.builder = node.builder
+    def compile_binop(self, node, builder):
 
         switcher = {
             "+" : self.compile_plus,
@@ -220,32 +221,32 @@ class CodeGen():
             "<" :self.compile_comp,
             "and": self.compile_and
         }
-        return switcher[node.values[0]](node)
+        return switcher[node.values[0]](node, builder)
 
-    def compile_not(self, node):
-        return node.builder.not_(self.compile_tree(node.children[0]))
+    def compile_not(self, node, builder):
+        return builder.not_(self.compile_tree(node.children[0]))
 
-    def compile_minus(self, node):
-        return node.builder.neg(self.compile_tree(node.children[0]))
+    def compile_minus(self, node, builder):
+        return builder.neg(self.compile_tree(node.children[0]))
 
-    def compile_isnull(self, node):
+    def compile_isnull(self, node, builder):
         return  # Add operation
 
-    def compile_unop(self, node):
+    def compile_unop(self, node, builder):
         for child in node.children:
-            child.builder = node.builder
+            child.builder = builder
 
         switcher = {
-            "not" : self.compile_not(node),
-            "-": self.compile_minus(node),
-            "isnull": self.compile_isnull(node)
+            "not" : self.compile_not(node, builder),
+            "-": self.compile_minus(node, builder),
+            "isnull": self.compile_isnull(node, builder)
             }
-        return switcher[node.values[0]](node)
+        return switcher[node.values[0]](node, builder)
         
 
-    def compile_assign(self, node):
-        var_ptr = node.module.get_global(node.children[0].values[0]) # Gets global variable pointer (as global value)
-        node.builder.store(self.compile_tree(node.children[1]),var_ptr)
+    def compile_assign(self, node, builder):
+        var_ptr = self.module.get_global(node.children[0].values[0]) # Gets global variable pointer (as global value)
+        builder.store(self.compile_tree(node.children[1]),var_ptr)
         return 
 
     def print_let(self, node, with_types):
@@ -257,44 +258,38 @@ class CodeGen():
             return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], with_types) + ", " + self.print_tree(node.children[2], with_types) +")"
         return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], with_types) +")"
 
-    def compile_while(self, node):
+    def compile_while(self, node, builder):
         for child in node.children:
-            child.builder = node.builder
+            child.builder = builder
 
-        with node.builder.if_then(self.compile_tree([node.children[0]])) as then:
+        with builder.if_then(self.compile_tree([node.children[0]])) as then:
             with then:
                 i = self.compile_tree(node.children[1])
-                node.builder.branch(node.builder.block)
+                builder.branch(builder.block)
         return i
 
-    def compile_if(self, node):
+    def compile_if(self, node, builder):
         for child in node.children:
-            child.builder = node.builder
+            child.builder = builder
 
         if len(node.children) == 3:
-            with node.builder.if_else(self.compile_tree(node.children[0])) as (then, otherwise):
+            with builder.if_else(self.compile_tree(node.children[0])) as (then, otherwise):
                 with then:
                     i = self.compile_tree(node.children[1])
 
                 with otherwise:
                     i = self.compile_tree(node.children[2])
         else:
-            with node.builder.if_then(self.compile_tree(node.children[0])) as then:
+            with builder.if_then(self.compile_tree(node.children[0])) as then:
                 with then:
                     i = self.compile_tree(node.chilren[1])
         
         return i
 
-    def print_formal(self, node):
+    def print_formal(self, node, builder):
         return self.compile_expression(node, 1)
 
-    def compile_method(self, node):
-        fnty = ir.FunctionType(self.types[node.node_type], ())
-        func = ir.Function(node.module, fnty, name=node.value[0])
-
-        block = func.append_basic_block(name=node.values[0])
-        builder = ir.IRBuilder(block)
-        node.builder = builder
+    def compile_method(self, node, builder):
         return 
     
     
@@ -303,23 +298,6 @@ class CodeGen():
             return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type + ", " + self.print_tree(node.children[1], with_types) +")"
         return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type +")"
 
-
-    def compile_main(self, node):
-        fnty = ir.FunctionType(ir.IntType(32), [], False)
-        func = ir.Function(node.module, fnty, name="main")
-
-        block = func.append_basic_block(name="entry")
-        builder = ir.IRBuilder(block)
-        node.builder = builder
-        node.children[2].builder = builder
-        node.parent.builder = builder
-        
-        return self.compile_tree(node.children[2])
-
-
-    def execute_main(self, node):
-        result = self.compile_main(node.children[0])
-        node.builder.ret(result)
 
     def compile_object(self):
         objectStruct = ir.Context().get_identified_type("struct.Object")
@@ -370,63 +348,63 @@ class CodeGen():
         self.dict['Object']['init'] = ir.Function(self.module, initType, name="Object__init")
 
 
-    def compile_class(self, class):
-        classStruct = ir.Context().get_identified_type("struct."+class)
-        classVT = ir.Context().get_identified_type("struct."+class+"VT")
+    def compile_class(self, class_name):
+        classStruct = ir.Context().get_identified_type("struct."+class_name)
+        classVT = ir.Context().get_identified_type("struct."+class_name+"VT")
 
         # Set class structure body
         classBody = [classVT.as_pointer()]
         classVTbody = []
 
         # Deep copy from parent class
-        self.dict[class]['methods'].update(self.dict[self.extends[class]]['methods'].copy())
-        self.dict[class]['fields'].update(self.dict[self.extends[class]]['fields'].copy())
+        self.dict[class_name]['methods'].update(self.dict[self.extends[class_name]]['methods'].copy())
+        self.dict[class_name]['fields'].update(self.dict[self.extends[class_name]]['fields'].copy())
 
-        for key in self.dict[self.extends[class]]['fields'].keys():
-            self.dict[class]['fields'][key] = self.dict[self.extends[class]]['fields'][key].copy()
-            classBody.append(self.dict[self.extends[class]]['fields'][key][1].copy())
+        for key in self.dict[self.extends[class_name]]['fields'].keys():
+            self.dict[class_name]['fields'][key] = self.dict[self.extends[class_name]]['fields'][key].copy()
+            classBody.append(self.dict[self.extends[class_name]]['fields'][key][1].copy())
 
-        for key in self.dict[self.extends[class]]['methods'].keys():
-            self.dict[class]['methods'][key] = self.dict[self.extends[class]]['methods'][key].copy()
-            classVTbody.append(self.dict[self.extends[class]]['methods'][key][0].copy())
+        for key in self.dict[self.extends[class_name]]['methods'].keys():
+            self.dict[class_name]['methods'][key] = self.dict[self.extends[class_name]]['methods'][key].copy()
+            classVTbody.append(self.dict[self.extends[class_name]]['methods'][key][0].copy())
 
         # Set class methods inside dictionary and classVT body list
-        if len(self.methods_dict[class]) == 0:
-            self.dict[class]['methods'] = {}
+        if len(self.methods_dict[class_name]) == 0:
+            self.dict[class_name]['methods'] = {}
         else:
-            for method in self.methods_dict[class]:
+            for method in self.methods_dict[class_name]:
                 returnType = self.types[method[1]]
                 argsType  = [classStruct.as_pointer()]
-                for arg in self.formals_dict[(class,method)]:
+                for arg in self.formals_dict[(class_name,method)]:
                     if arg[1] in self.types:
                         argsType.append(self.types[arg[1]])
                     else:
                         argsType.append(self.dict[arg[1]]['struct'])
                 
                 typeMethod = ir.FunctionType(returnType.as_pointer(), argsType)
-                classMethod = ir.Function(self.module, typeMethod, name=class+"__"+method)
+                classMethod = ir.Function(self.module, typeMethod, name=class_name+"__"+method)
                 classVTbody.append(typeMethod.as_pointer())
-                self.dict[class]['methods'].update({method : [typeMethod, classMethod]})
+                self.dict[class_name]['methods'].update({method : [typeMethod, classMethod]})
 
         # Set class fields in dictionary
-        if len(self.fields_dict[class]) == 0:
+        if len(self.fields_dict[class_name]) == 0:
             self.dict['Object']['fields'] = {}
         else:
-            for field in self.fields_dict[class]:
+            for field in self.fields_dict[class_name]:
                 if field[1] in self.types:
                     fieldType = self.types[field[1]]
                 else:
                     fieldType = self.dict[field[1]]['struct']
                 classBody.append(fieldType)
-                self.dict[class]["fields"].update({field[0], fieldType})
+                self.dict[class_name]["fields"].update({field[0], fieldType})
 
         # Set class VT body and class structure body
         classVT.set_body(*classVTbody)
         classStruct.set_body(*classBody)
 
         # Set structure and VT structure in dictionary
-        self.dict[class]['struct'] = classStruct.as_pointer()
-        self.dict[class]['VTstruct'] = classVT
+        self.dict[class_name]['struct'] = classStruct.as_pointer()
+        self.dict[class_name]['VTstruct'] = classVT
 
 
         # New and init functions
@@ -437,29 +415,39 @@ class CodeGen():
         # self.dict[class]['init'] = ir.Function(self.module, initType, name=class+'__init')
 
 
-    def compile_program(self, node, dictionaries):
+
+    def compile_main(self, node):
+        fnty = ir.FunctionType(ir.IntType(32), [], False)
+        func = ir.Function(self.module, fnty, name="main")
+
+        block = func.append_basic_block(name="entry")
+        builder = ir.IRBuilder(block)
+        builder.ret(self.compile_tree(node.children[2], builder))
+
+
+    def compile_program(self, node):
         for child in node.children:
             if child.values[0] == "Main":
-                self.execute_main(child.children[1])
-        return node.module
+                self.compile_main(child.children[1].children[0])
+        return self.module
 
 
-    def compile_extends(self, class):
-        if self.extends[class] not in self.dict:
-            self.compile_extends(self.extends[class])
+    def compile_extends(self, class_name):
+        if self.extends[class_name] not in self.dict:
+            self.compile_extends(self.extends[class_name])
 
-        elif class not in self.dict:
-            self.compile_class(class)
+        elif class_name not in self.dict:
+            self.compile_class(class_name)
 
 
     def compile_classes(self):
-        for class in self.extends:
-            if class != "Main":
-                while self.extends[class] not in self.dict:
-                    self.compile_extends(class)
+        for class_name in self.extends:
+            if class_name != "Main":
+                while self.extends[class_name] not in self.dict:
+                    self.compile_extends(class_name)
                 
-                if class not in self.dict:
-                    self.compile_class(class)
+                if class_name not in self.dict:
+                    self.compile_class(class_name)
 
 
         

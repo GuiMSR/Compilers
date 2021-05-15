@@ -81,6 +81,9 @@ def main():
         parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
         parsed = parser.parser.parse(string_text)
         syntax_tree.set_parent_nodes(parsed, None)
+        codegen = CodeGen(parsed, dictionaries)
+        codegen.codeGeneration()
+        print(str(codegen.module))
 
         #codegen.save_ir("output.ll")
 

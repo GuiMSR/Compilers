@@ -5,8 +5,12 @@ import sys
 
 class CodeGen():
 
-    def __init__(self, parsed_tree):
+    def __init__(self, parsed_tree, dictionaries):
         self.tree = parsed_tree
+        self.extends = dictionaries[2]
+        self.methods_dict = dictionaries[1]
+        self.fields_dict = dictionaries[0]
+        self.formals_dict = dictionaries[3]
         self.module = ir.Module(name="vsop")
         self.binding = binding
         self.binding.initialize()
@@ -26,6 +30,7 @@ class CodeGen():
 
         self.dict = {'Object': {}}
         self.compile_object()
+        self.compile_classes()
         self.module = self.compile_program(self.tree)
 
 
@@ -86,9 +91,7 @@ class CodeGen():
             "method": self.compile_method,
             "field": self.print_field,
             "methods": self.print_list,
-            "fields": self.print_list,
-            "class": self.compile_class,
-            "program": self.compile_program
+            "fields": self.print_list
         }    
         i = switcher[node.name](node, builder)
         return i
@@ -293,6 +296,12 @@ class CodeGen():
         builder = ir.IRBuilder(block)
         node.builder = builder
         return 
+    
+    
+    def print_field(self, node, with_types):
+        if len(node.children) == 2:
+            return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type + ", " + self.print_tree(node.children[1], with_types) +")"
+        return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type +")"
 
 
     def compile_main(self, node):
@@ -306,12 +315,6 @@ class CodeGen():
         node.parent.builder = builder
         
         return self.compile_tree(node.children[2])
-
-
-    def print_field(self, node, with_types):
-        if len(node.children) == 2:
-            return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type + ", " + self.print_tree(node.children[1], with_types) +")"
-        return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type +")"
 
 
     def execute_main(self, node):
@@ -367,22 +370,97 @@ class CodeGen():
         self.dict['Object']['init'] = ir.Function(self.module, initType, name="Object__init")
 
 
+    def compile_class(self, class):
+        classStruct = ir.Context().get_identified_type("struct."+class)
+        classVT = ir.Context().get_identified_type("struct."+class+"VT")
+
+        # Set class structure body
+        classBody = [classVT.as_pointer()]
+        classVTbody = []
+
+        # Deep copy from parent class
+        self.dict[class]['methods'].update(self.dict[self.extends[class]]['methods'].copy())
+        self.dict[class]['fields'].update(self.dict[self.extends[class]]['fields'].copy())
+
+        for key in self.dict[self.extends[class]]['fields'].keys():
+            self.dict[class]['fields'][key] = self.dict[self.extends[class]]['fields'][key].copy()
+            classBody.append(self.dict[self.extends[class]]['fields'][key][1].copy())
+
+        for key in self.dict[self.extends[class]]['methods'].keys():
+            self.dict[class]['methods'][key] = self.dict[self.extends[class]]['methods'][key].copy()
+            classVTbody.append(self.dict[self.extends[class]]['methods'][key][0].copy())
+
+        # Set class methods inside dictionary and classVT body list
+        if len(self.methods_dict[class]) == 0:
+            self.dict[class]['methods'] = {}
+        else:
+            for method in self.methods_dict[class]:
+                returnType = self.types[method[1]]
+                argsType  = [classStruct.as_pointer()]
+                for arg in self.formals_dict[(class,method)]:
+                    if arg[1] in self.types:
+                        argsType.append(self.types[arg[1]])
+                    else:
+                        argsType.append(self.dict[arg[1]]['struct'])
+                
+                typeMethod = ir.FunctionType(returnType.as_pointer(), argsType)
+                classMethod = ir.Function(self.module, typeMethod, name=class+"__"+method)
+                classVTbody.append(typeMethod.as_pointer())
+                self.dict[class]['methods'].update({method : [typeMethod, classMethod]})
+
+        # Set class fields in dictionary
+        if len(self.fields_dict[class]) == 0:
+            self.dict['Object']['fields'] = {}
+        else:
+            for field in self.fields_dict[class]:
+                if field[1] in self.types:
+                    fieldType = self.types[field[1]]
+                else:
+                    fieldType = self.dict[field[1]]['struct']
+                classBody.append(fieldType)
+                self.dict[class]["fields"].update({field[0], fieldType})
+
+        # Set class VT body and class structure body
+        classVT.set_body(*classVTbody)
+        classStruct.set_body(*classBody)
+
+        # Set structure and VT structure in dictionary
+        self.dict[class]['struct'] = classStruct.as_pointer()
+        self.dict[class]['VTstruct'] = classVT
+
+
+        # New and init functions
+
+        # newType = ir.FunctionType(classStruct.as_pointer(), [])
+        # self.dict[class]['new'] = ir.Function(self.module, newType, name=class+'__new')
+        # initType = ir.FunctionType(classStruct.as_pointer(), [classStruct.as_pointer()])
+        # self.dict[class]['init'] = ir.Function(self.module, initType, name=class+'__init')
 
 
     def compile_program(self, node, dictionaries):
         for child in node.children:
             if child.values[0] == "Main":
                 self.execute_main(child.children[1])
-            elif child.values[0] != "Object":
-                self.compile_other_class(child, dictionaries)
         return node.module
 
 
+    def compile_extends(self, class):
+        if self.extends[class] not in self.dict:
+            self.compile_extends(self.extends[class])
 
-    def compile_other_class(self, node, dictionaries):
+        elif class not in self.dict:
+            self.compile_class(class)
 
-        # extensions checking to do + creating structures for each class such as in object
-        return 
+
+    def compile_classes(self):
+        for class in self.extends:
+            if class != "Main":
+                while self.extends[class] not in self.dict:
+                    self.compile_extends(class)
+                
+                if class not in self.dict:
+                    self.compile_class(class)
+
 
         
 def add_object():

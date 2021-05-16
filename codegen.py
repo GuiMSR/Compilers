@@ -66,7 +66,8 @@ class CodeGen():
         output_file = open(filename + '.ll', 'w')
         output_file.write(result)
         output_file.close()
-        os.system('llc < ' + filename + '.ll > ' + filename + '.s')
+        #compile locally with llc-11
+        os.system('llc ' + filename + '.ll')
         os.system('clang ' + filename + '.s -lm -o ' + filename) 
 
     def print_ir(self):
@@ -85,12 +86,6 @@ class CodeGen():
         backing_module = self.binding.parse_assembly("")
         self.engine = self.binding.create_mcjit_compiler(backing_module, target_machine)
 
-    def _compile_ir(self):
-        ir_str = add_object()
-        llvm_ir = ir_str
-        module = self.binding.parse_assembly(llvm_ir)
-        module.name = "vsopc"
-        self.module = module
     
     def _end_ir(self):
         self.module.verify()
@@ -222,10 +217,10 @@ class CodeGen():
         fct = builder.load(fctPtr)
         args = self.compile_args(node.children[2], builder, scope)
 
-        cast = builder.bitcast(value, method_list[1].args[0].type)
+        cast = builder.bitcast(value, method_list[2].args[0].type)
         fct_args = [cast]
         for i, arg in enumerate(args):
-            cast = builder.bitcast(arg, method_list[1].args[i+1].type)
+            cast = builder.bitcast(arg, method_list[2].args[i+1].type)
             fct_args.append(cast)
             
         return builder.call(fct, fct_args)
@@ -363,7 +358,7 @@ class CodeGen():
         objModule = ir.Module(name='objModule')
 
         objectStruct = ir.Context().get_identified_type("Object")
-        objectVT = ir.Context().get_identified_type("struct.ObjectVT")
+        objectVT = ir.Context().get_identified_type("ObjectVTable")
 
         # Set Object structure body
         objectStruct.set_body(*[objectVT.as_pointer()])
@@ -383,7 +378,7 @@ class CodeGen():
         # Methods of Object
         objectPrint = ir.Function(objModule, typePrint, name="Object__print")
         objectPrintBool = ir.Function(objModule, typePrintBool, name="Object__printBool")
-        objectPrintInt32 = ir.Function(objModule, typePrintInt32, name="Object__printint32")
+        objectPrintInt32 = ir.Function(objModule, typePrintInt32, name="Object__printInt32")
         objectInputLine= ir.Function(objModule, typeInputLine, name="Object__inputLine")
         objectInputBool= ir.Function(objModule, typeInputBool, name="Object__inputBool")
         objectInputInt32= ir.Function(objModule, typeInputInt32, name="Object__inputInt32")
@@ -408,19 +403,17 @@ class CodeGen():
         }
 
         newType = ir.FunctionType(objectStruct.as_pointer(), [])
-        self.dict['Object']['new'] = ir.Function(objModule, newType, name='Object__new')
+        self.dict['Object']['new'] = ir.Function(objModule, newType, name='Object___new')
         initType = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer()])
-        self.dict['Object']['init'] = ir.Function(objModule, initType, name="Object__init")
+        self.dict['Object']['init'] = ir.Function(objModule, initType, name="Object___init")
 
 
     def compile_class(self, class_name):
-        classStruct = ir.Context().get_identified_type("struct."+class_name)
-        classVT = ir.Context().get_identified_type("struct."+class_name+"VT")
+        classStruct = ir.global_context.get_identified_type(class_name)
+        classVT = ir.global_context.get_identified_type(class_name+"VT")
 
         # Set class structure body
         classBody = [classVT.as_pointer()]
-        classVTbody = []
-        classMethods = []
 
         # Deep copy from parent class
         self.dict[class_name] = self.dict[self.extends[class_name]].copy()
@@ -451,7 +444,7 @@ class CodeGen():
                 else:
                     argsType.append(self.dict[arg[1]]['struct'])
             
-            typeMethod = ir.FunctionType(returnType.as_pointer(), argsType)
+            typeMethod = ir.FunctionType(returnType, argsType)
             if method[0] == "main":
                 methodFct = ir.Function(self.module, typeMethod, name="main")
             else:
@@ -465,8 +458,10 @@ class CodeGen():
                 self.dict[class_name]['methods'].update({method[0] : [nbMethod, typeMethod, methodFct]})
                 nbMethod += 1
 
-        for method in self.methods_dict[class_name].items():
+        classVTbody = [None] * len(self.dict[class_name]['methods'])
+        classMethods = [None] * len(self.dict[class_name]['methods'])
 
+        for method in self.dict[class_name]['methods'].items():
             classVTbody[method[1][0]] = method[1][1].as_pointer()
             classMethods[method[1][0]] =  method[1][2]
 
@@ -488,15 +483,14 @@ class CodeGen():
         # Set structure and VT structure in dictionary
         self.dict[class_name]['struct'] = classStruct.as_pointer()
         self.dict[class_name]['VTstruct'] = classVT
-        print(self.dict[class_name]['VTstruct'])
 
 
         # New and Init functions
         newType = ir.FunctionType(classStruct.as_pointer(), [])
-        newFct = ir.Function(self.module, newType, name=class_name+'_new')
+        newFct = ir.Function(self.module, newType, name=class_name+'___new')
         self.dict[class_name]['new'] = newFct
         initType = ir.FunctionType(classStruct.as_pointer(), [classStruct.as_pointer()])
-        initFct = ir.Function(self.module, initType, name=class_name+'_init')
+        initFct = ir.Function(self.module, initType, name=class_name+'___init')
         self.dict[class_name]['init'] = initFct
 
 
@@ -576,11 +570,11 @@ class CodeGen():
 
     def compile_main(self, node):
         scope = variableScope()
-        block = self.dict["Main"]["methods"]["main"][1].append_basic_block(name="entry")
+        block = self.dict["Main"]["methods"]["main"][2].append_basic_block()
         builder = ir.IRBuilder(block)
         
         main = builder.call(self.dict['Main']['new'], [])
-        args = self.dict["Main"]["methods"]["main"][1].args
+        args = self.dict["Main"]["methods"]["main"][2].args
         ptr = builder.alloca(args[0].type)
         builder.store(main, ptr)
 

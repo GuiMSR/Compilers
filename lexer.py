@@ -267,7 +267,7 @@ class VsopLexer():
             self.lexer.begin('INITIAL')
         
     def t_STRING_string_literal(self,t):
-        r'((?!\\|\"|\').|(\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|([ \t])*\n)))+'
+        r'((?!\\|\").|(\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|([ \t])*\n)))+'
 
         # Eliminating unecessary line feed and horizontal tabulations
         returns = sum(1 for m in re.finditer(r"\\([ \t])*\n", t.value))

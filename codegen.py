@@ -108,7 +108,7 @@ class CodeGen():
             "par alone": self.compile_expression,
             "self": self.compile_expression,
             "object identifier": self.compile_expression,
-            "new type": self.print_new_type,
+            "new type": self.compile_new_type,
             "call": self.compile_call,
             "binop": self.compile_binop,
             "unop": self.compile_unop,
@@ -193,10 +193,8 @@ class CodeGen():
         scope.removeScope()
         return i
 
-    def print_new_type(self, node, with_types):
-        if with_types and not node.type is None:
-            return "New(" + node.values[0] + ") : " + node.type
-        return "New(" + node.values[0] + ")"
+    def compile_new_type(self, node, builder, scope):
+        return builder.call(self.dict[node.values[0]]['new'], [])
 
     def compile_args(self, node, builder, scope):
         args = []
@@ -271,18 +269,16 @@ class CodeGen():
         return switcher[node.values[0]](node, builder, scope)
 
     def compile_not(self, node, builder, scope):
-        return builder.not_(self.compile_tree(node.children[0]))
+        return builder.not_(self.compile_tree(node.children[0], builder, scope))
 
     def compile_minus(self, node, builder, scope):
-        return builder.neg(self.compile_tree(node.children[0]))
+        return builder.neg(self.compile_tree(node.children[0], builder, scope))
 
     def compile_isnull(self, node, builder, scope):
-        return  # Add operation
+        typeNull = ir.Constant(self.dict[node.node_class]['struct'], None)
+        return  builder.icmp_unsigned('==', self.compile_tree(node.children[0], builder, scope), typeNull)
 
     def compile_unop(self, node, builder, scope):
-        for child in node.children:
-            child.builder = builder
-
         switcher = {
             "not" : self.compile_not(node, builder, scope),
             "-": self.compile_minus(node, builder, scope),
@@ -292,9 +288,33 @@ class CodeGen():
         
 
     def compile_assign(self, node, builder, scope):
-        var_ptr = self.module.get_global(node.children[0].values[0]) # Gets global variable pointer (as global value)
-        builder.store(self.compile_tree(node.children[1]),var_ptr)
-        return 
+        
+        if node.type in self.types:
+            returnType = self.types[node.type]
+        else:
+            returnType = self.dict[node.type]['struct']
+
+        val = self.compile_tree(node.children, builder, scope)
+
+        # Store if argument
+        ptr = scope.getValue(node.children[0].values[0])
+        if ptr is None:
+            cast = builder.bitcast(val, returnType)
+            builder.store(cast, ptr)
+
+        # If field
+        else:
+            field = self.dict[node.node_class]['fields'][node.values[0]]
+            temp = list(self.dict[node.node_class]['fields'].items()) 
+            index = [idx for idx, key in enumerate(temp) if key[0] == node.values[0]]
+
+            selfPtr = scope.getValue('self')
+            ld = builder.load(selfPtr)
+            fieldPtr = builder.gep(ld, self.types['int32'](0), self.types['int32'](index[0]), inbounds=True)
+            cast = builder.cast(val, field[0])
+            builder.store(cast, fieldPtr)
+
+        return val 
 
     def print_let(self, node, with_types):
         if with_types and not node.type is None:
@@ -306,30 +326,24 @@ class CodeGen():
         return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], with_types) +")"
 
     def compile_while(self, node, builder, scope):
-        for child in node.children:
-            child.builder = builder
 
-        with builder.if_then(self.compile_tree([node.children[0]])) as then:
-            with then:
-                i = self.compile_tree(node.children[1])
-                builder.branch(builder.block)
+        with builder.if_then(self.compile_tree(node.children[0], builder, scope)):
+            i = self.compile_tree(node.children[1], builder, scope)
+            builder.branch(builder.block)
         return i
 
     def compile_if(self, node, builder, scope):
-        for child in node.children:
-            child.builder = builder
 
         if len(node.children) == 3:
-            with builder.if_else(self.compile_tree(node.children[0])) as (then, otherwise):
+            with builder.if_else(self.compile_tree(node.children[0], builder, scope)) as (then, otherwise):
                 with then:
-                    i = self.compile_tree(node.children[1])
+                    i = self.compile_tree(node.children[1], builder, scope)
 
                 with otherwise:
-                    i = self.compile_tree(node.children[2])
+                    i = self.compile_tree(node.children[2], builder, scope)
         else:
-            with builder.if_then(self.compile_tree(node.children[0])) as then:
-                with then:
-                    i = self.compile_tree(node.chilren[1])
+            with builder.if_then(self.compile_tree(node.children[0], builder, scope)):
+                i = self.compile_tree(node.chilren[1], builder, scope)
         
         return i
 

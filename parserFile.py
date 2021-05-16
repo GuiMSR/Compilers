@@ -425,6 +425,8 @@ class VsopParser():
             nlines = len(self.string_text.split('\n')) - 1
             sys.stderr.write("{0}:{1}:{2}: syntax error: ".format(self.file_name, p.lineno - nlines, colno))
 
+
+    # Returns tuple with line and column positions 
     def find_position(self, p, i):
         colno = p.lexpos(i) - self.string_text.rfind('\n', 0, p.lexpos(i))
         lineno = 1 if p.lineno(i) == 0 else p.lineno(i) - self.string_text.count('\n')

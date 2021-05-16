@@ -38,35 +38,33 @@ def main():
 
     if len(string_text) == 0 :
         sys.stdout.write("Source code file is empty")
-
-    # Lexer initialisation
+    
     vsopLexer = VsopLexer(text_file_name, string_text)
     lexer = vsopLexer.lexer
     lexer.input(string_text)
 
-    for token in lexer:
-        if token.type == "Lexicalerror":
-            sys.exit(1)
+    if(args.showTks==1):
+    # Lexer initialisation
 
-        token.type = token.type.lower().replace("_","-")
-        colno = vsopLexer.find_column(string_text,token)
-        if(token.type == "string-literal"):
-            colno -= 1
+        for token in lexer:
+            if token.type == "Lexicalerror":
+                sys.exit(1)
 
-        if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
-            if(args.showTks==1):
+            token.type = token.type.lower().replace("_","-")
+            colno = vsopLexer.find_column(string_text,token)
+            if(token.type == "string-literal"):
+                colno -= 1
+            if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
                 sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
-
-        else:
-            if(args.showTks==1):
+            else:
                 sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
     # Parser initialisation
-    if(args.parsing == 1):
+    elif(args.parsing == 1):
         parser = VsopParser(VsopLexer, text_file_name, string_text)
         parsed = parser.parser.parse(string_text)
         print(syntax_tree.print_tree(parsed, 0))
 
-    if(args.semantics == 1):
+    elif(args.semantics == 1):
         checker = ClassChecker(VsopLexer, text_file_name, string_text)
         dictionaries = checker.parser.parse(string_text)
         parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
@@ -74,7 +72,7 @@ def main():
         syntax_tree.set_parent_nodes(parsed, None)
         print(syntax_tree.print_tree(parsed, 1))
 
-    if(args.generation == 1):
+    elif(args.generation == 1):
         
         checker = ClassChecker(VsopLexer, text_file_name, string_text)
         dictionaries = checker.parser.parse(string_text)
@@ -83,14 +81,16 @@ def main():
         syntax_tree.set_parent_nodes(parsed, None)
         codegen = CodeGen(parsed, dictionaries)
         codegen.codeGeneration()
-        #print(codegen.module)
-
-        #codegen.save_ir("output.ll")
-
-
-
-
-    
+        codegen.print_ir()
+    else:
+        checker = ClassChecker(VsopLexer, text_file_name, string_text)
+        dictionaries = checker.parser.parse(string_text)
+        parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
+        parsed = parser.parser.parse(string_text)
+        syntax_tree.set_parent_nodes(parsed, None)
+        codegen = CodeGen(parsed, dictionaries)
+        codegen.codeGeneration()
+        codegen.save_ir(text_file_name[:-5])  
 
 if __name__ == "__main__":
     main()

@@ -216,7 +216,7 @@ class ClassChecker():
 
     def p_init(self, p):
         'init : program'
-        p[0] = (self.fields_dict, self.methods_dict, self.extends, self.formals)
+        p[0] = (self.fields_dict, self.methods_dict, self.extends, self.formals, self.class_dict)
         self.check_main_exists()
         self.check_extends_parents()
         self.check_cycles()

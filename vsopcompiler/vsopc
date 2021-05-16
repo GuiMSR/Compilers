@@ -5,13 +5,15 @@ Created on Tue Feb  9 17:53:55 2021
 
 @author: Guilherme Madureira & Julien Carion
 """
-
 import argparse
 import sys
+
+from llvmlite import ir
 from lexer import VsopLexer
-from parserFileV2 import VsopParserV2
-from semanticsFileV2 import VsopParser2V2
+from parserFile import VsopParser
+from semanticsFile import VsopParser2
 from classCheckerFile import ClassChecker
+from codegen import CodeGen
 import warnings
 import syntax_tree
 
@@ -22,8 +24,9 @@ def main():
     argParser = argparse.ArgumentParser()
     mode = argParser.add_mutually_exclusive_group()
     mode.add_argument('-l', '--showTks', action="store_true", help="Show tokens from lexical analysis")
-    mode.add_argument('-p', '--parsing', action="store_true", help="Don't show tokens from lexcial analysis")
+    mode.add_argument('-p', '--parsing', action="store_true", help="Don't show tokens from lexical analysis")
     mode.add_argument('-c', '--semantics', action="store_true", help="Add semantics to parsing analysis")
+    mode.add_argument('-i', '--generation', action="store_true", help="Outputs textual LLVM IR")
     argParser.add_argument("source_file", help="Path to the VSOP source code")
     args = argParser.parse_args()
 
@@ -35,44 +38,59 @@ def main():
 
     if len(string_text) == 0 :
         sys.stdout.write("Source code file is empty")
-
-    # Lexer initialisation
+    
     vsopLexer = VsopLexer(text_file_name, string_text)
     lexer = vsopLexer.lexer
     lexer.input(string_text)
 
-    for token in lexer:
-        if token.type == "Lexicalerror":
-            sys.exit(1)
+    if(args.showTks==1):
+    # Lexer initialisation
 
-        token.type = token.type.lower().replace("_","-")
-        colno = vsopLexer.find_column(string_text,token)
-        if(token.type == "string-literal"):
-            colno -= 1
+        for token in lexer:
+            if token.type == "Lexicalerror":
+                sys.exit(1)
 
-        if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
-            if(args.showTks==1):
+            token.type = token.type.lower().replace("_","-")
+            colno = vsopLexer.find_column(string_text,token)
+            if(token.type == "string-literal"):
+                colno -= 1
+            if any(token.type == TOKEN_CLASS for TOKEN_CLASS in ('string-literal', 'object-identifier', 'type-identifier', 'integer-literal')):
                 sys.stdout.write("{0},{1},{2},{3}\n".format(token.lineno, colno, token.type, token.value))
-
-        else:
-            if(args.showTks==1):
+            else:
                 sys.stdout.write("{0},{1},{2}\n".format(token.lineno, colno, token.type))
     # Parser initialisation
-    if(args.parsing == 1):
-        parser = VsopParserV2(VsopLexer, text_file_name, string_text)
+    elif(args.parsing == 1):
+        parser = VsopParser(VsopLexer, text_file_name, string_text)
         parsed = parser.parser.parse(string_text)
         print(syntax_tree.print_tree(parsed, 0))
 
-    if(args.semantics == 1):
+    elif(args.semantics == 1):
         checker = ClassChecker(VsopLexer, text_file_name, string_text)
         dictionaries = checker.parser.parse(string_text)
-        parser = VsopParser2V2(VsopLexer, text_file_name, string_text, dictionaries)
+        parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
         parsed = parser.parser.parse(string_text)
         syntax_tree.set_parent_nodes(parsed, None)
         print(syntax_tree.print_tree(parsed, 1))
 
-
-    
+    elif(args.generation == 1):
+        
+        checker = ClassChecker(VsopLexer, text_file_name, string_text)
+        dictionaries = checker.parser.parse(string_text)
+        parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
+        parsed = parser.parser.parse(string_text)
+        syntax_tree.set_parent_nodes(parsed, None)
+        codegen = CodeGen(parsed, dictionaries)
+        codegen.codeGeneration()
+        codegen.print_ir()
+    else:
+        checker = ClassChecker(VsopLexer, text_file_name, string_text)
+        dictionaries = checker.parser.parse(string_text)
+        parser = VsopParser2(VsopLexer, text_file_name, string_text, dictionaries)
+        parsed = parser.parser.parse(string_text)
+        syntax_tree.set_parent_nodes(parsed, None)
+        codegen = CodeGen(parsed, dictionaries)
+        codegen.codeGeneration()
+        codegen.save_ir(text_file_name[:-5])  
 
 if __name__ == "__main__":
     main()

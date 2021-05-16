@@ -12,7 +12,9 @@ help:
 
 
 install-tools:
-
+	sudo apt-get install --yes python3-pip
+	sudo apt-get install --yes python-setuptools
+	yes | sudo pip3 install llvmlite
 
 vsopc:
 

@@ -1,7 +1,6 @@
 class Main {
     main() : int32 {
-        printInt32(42);
-        print("\n");
+        print("Hello, world!\n");
         0
     }
 }

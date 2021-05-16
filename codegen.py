@@ -55,14 +55,12 @@ class CodeGen():
             }
 
         self.dict = {'Object': {}}
-        mallocType = ir.FunctionType(ir.IntType(8).as_pointer(), [ir.IntType(64)])
-        self.malloc = ir.Function(self.module, mallocType, name='malloc')
         self.compile_object()
         self.compile_classes()
         self.compile_program(self.tree)
 
     def save_ir(self, filename):
-        result = str(self.module)
+        result = str(self.module).split('\n', 3)[3]
         object_ll = object.getObject()
         result = object_ll + result
         output_file = open(filename + '.ll', 'w')
@@ -72,7 +70,7 @@ class CodeGen():
         os.system('clang ' + filename + '.s -lm -o ' + filename) 
 
     def print_ir(self):
-        result = str(self.module)
+        result = str(self.module).split('\n', 3)[3]
         object_ll = object.getObject()
         result = object_ll + result
         sys.stdout.write(result)
@@ -220,6 +218,7 @@ class CodeGen():
         # Recover function and its arguments
         fctPtr = method_list[1]
         fct = builder.load(fctPtr)
+        print(fct)
         args = self.compile_args(node.children[2], builder, scope)
         # Recover self argument and function arguments casts
         value = self.compile_tree(node.children[0], builder, scope)
@@ -348,11 +347,16 @@ class CodeGen():
 
 
     def compile_object(self):
-        objectStruct = ir.Context().get_identified_type("struct.Object")
+        objModule = ir.Module(name='objModule')
+
+        objectStruct = ir.Context().get_identified_type("Object")
         objectVT = ir.Context().get_identified_type("struct.ObjectVT")
 
         # Set Object structure body
         objectStruct.set_body(*[objectVT.as_pointer()])
+
+        mallocType = ir.FunctionType(ir.IntType(8).as_pointer(), [ir.IntType(64)])
+        self.malloc = ir.Function(objModule, mallocType, name='malloc')
 
         # Type of methods in Object VT
         typePrint = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer(), self.types['string']])
@@ -364,12 +368,12 @@ class CodeGen():
 
 
         # Methods of Object
-        objectPrint = ir.Function(self.module, typePrint, name="Object__print")
-        objectPrintBool = ir.Function(self.module, typePrintBool, name="Object__printBool")
-        objectPrintInt32 = ir.Function(self.module, typePrintInt32, name="Object__printint32")
-        objectInputLine= ir.Function(self.module, typeInputLine, name="Object__inputLine")
-        objectInputBool= ir.Function(self.module, typeInputBool, name="Object__inputBool")
-        objectInputInt32= ir.Function(self.module, typeInputInt32, name="Object__inputInt32")
+        objectPrint = ir.Function(objModule, typePrint, name="Object__print")
+        objectPrintBool = ir.Function(objModule, typePrintBool, name="Object__printBool")
+        objectPrintInt32 = ir.Function(objModule, typePrintInt32, name="Object__printint32")
+        objectInputLine= ir.Function(objModule, typeInputLine, name="Object__inputLine")
+        objectInputBool= ir.Function(objModule, typeInputBool, name="Object__inputBool")
+        objectInputInt32= ir.Function(objModule, typeInputInt32, name="Object__inputInt32")
 
         objectVTbody = [typePrint.as_pointer(), typePrintBool.as_pointer(), typePrintInt32.as_pointer(), typeInputLine.as_pointer(), typeInputBool.as_pointer(), 
                         typeInputInt32.as_pointer()]        
@@ -391,9 +395,9 @@ class CodeGen():
         }
 
         newType = ir.FunctionType(objectStruct.as_pointer(), [])
-        self.dict['Object']['new'] = ir.Function(self.module, newType, name='Object__new')
+        self.dict['Object']['new'] = ir.Function(objModule, newType, name='Object__new')
         initType = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer()])
-        self.dict['Object']['init'] = ir.Function(self.module, initType, name="Object__init")
+        self.dict['Object']['init'] = ir.Function(objModule, initType, name="Object__init")
 
 
     def compile_class(self, class_name):
@@ -464,6 +468,7 @@ class CodeGen():
         # Set structure and VT structure in dictionary
         self.dict[class_name]['struct'] = classStruct.as_pointer()
         self.dict[class_name]['VTstruct'] = classVT
+        print(self.dict[class_name]['VTstruct'])
 
 
         # New and Init functions

@@ -30,16 +30,16 @@ declare i32 @ungetc(i32, %_IO_FILE*)
 
 ; String literals
 
-@.str = constant [3 x i8] c"%s\00"
-@.str.1 = constant [5 x i8] c"true\00"
-@.str.2 = constant [6 x i8] c"false\00"
-@.str.3 = constant [3 x i8] c"%d\00"
+@.str = constant [3 x i8] c"%s\\00"
+@.str.1 = constant [5 x i8] c"true\\00"
+@.str.2 = constant [6 x i8] c"false\\00"
+@.str.3 = constant [3 x i8] c"%d\\00"
 @.str.4 = constant [1 x i8] zeroinitializer
-@.str.5 = constant [38 x i8] c"Object::inputBool: cannot read word!\0A\00"
-@.str.6 = constant [49 x i8] c"Object::inputBool: `%s` is not a valid boolean!\0A\00"
-@.str.7 = constant [39 x i8] c"Object::inputInt32: cannot read word!\0A\00"
-@.str.8 = constant [58 x i8] c"Object::inputInt32: `%s` is not a valid integer literal!\0A\00"
-@.str.9 = constant [57 x i8] c"Object::inputInt32: `%s` does not fit a 32-bit integer!\0A\00"
+@.str.5 = constant [38 x i8] c"Object::inputBool: cannot read word!\\0A\\00"
+@.str.6 = constant [49 x i8] c"Object::inputBool: `%s` is not a valid boolean!\\0A\\00"
+@.str.7 = constant [39 x i8] c"Object::inputInt32: cannot read word!\\0A\\00"
+@.str.8 = constant [58 x i8] c"Object::inputInt32: `%s` is not a valid integer literal!\\0A\\00"
+@.str.9 = constant [57 x i8] c"Object::inputInt32: `%s` does not fit a 32-bit integer!\\0A\\00"
 
 ; Object's shared vtable instance
 

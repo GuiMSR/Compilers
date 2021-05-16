@@ -169,11 +169,9 @@ class CodeGen():
                 value = builder.load(ptr)
             else:
                 field = self.dict[node.node_class]['fields'].get(node.values[0])
-                temp = list(self.dict[node.node_class]['fields'].items()) 
-                index = [idx for idx, key in enumerate(temp) if key[0] == node.values[0]]
                 selfPtr = scope.getValue(node.node_class)
                 ld = builder.load(selfPtr)
-                fctType = builder.gep(ld, [self.types['int32'](0), self.types['int32'](index[0])], inbounds=True)
+                fctType = builder.gep(ld, [self.types['int32'](0), self.types['int32'](field[0])], inbounds=True)
                 value = builder.load(fctType)
 
             return value
@@ -213,19 +211,23 @@ class CodeGen():
         else:
             method_list = self.dict[class_name]["methods"][method_name]
 
-        # Recover function and its arguments
-        fctPtr = method_list[1]
-        fct = builder.load(fctPtr)
-        print(fct)
-        args = self.compile_args(node.children[2], builder, scope)
+        
         # Recover self argument and function arguments casts
         value = self.compile_tree(node.children[0], builder, scope)
+        vTablePtr = builder.gep(value, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
+        vtbl = builder.load(vTablePtr)
+
+        # Recover function from VT and its arguments
+        fctPtr = builder.gep(vtbl, [self.types['int32'](0), self.types['int32'](method_list[0])], inbounds=True)
+        fct = builder.load(fctPtr)
+        args = self.compile_args(node.children[2], builder, scope)
+
         cast = builder.bitcast(value, method_list[1].args[0].type)
         fct_args = [cast]
         for i, arg in enumerate(args):
             cast = builder.bitcast(arg, method_list[1].args[i+1].type)
             fct_args.append(cast)
-
+            
         return builder.call(fct, fct_args)
 
 
@@ -305,12 +307,9 @@ class CodeGen():
         # If field
         else:
             field = self.dict[node.node_class]['fields'][node.values[0]]
-            temp = list(self.dict[node.node_class]['fields'].items()) 
-            index = [idx for idx, key in enumerate(temp) if key[0] == node.values[0]]
-
             selfPtr = scope.getValue('self')
             ld = builder.load(selfPtr)
-            fieldPtr = builder.gep(ld, self.types['int32'](0), self.types['int32'](index[0]), inbounds=True)
+            fieldPtr = builder.gep(ld, self.types['int32'](0), self.types['int32'](field[0]), inbounds=True)
             cast = builder.cast(val, field[0])
             builder.store(cast, fieldPtr)
 
@@ -400,12 +399,12 @@ class CodeGen():
         self.dict['Object']['fields'] = {}
 
         self.dict['Object']['methods'] = {
-            'print' : [typePrint, objectPrint],
-            'printBool' : [typePrintBool, objectPrintBool],
-            'printInt32' : [typePrintInt32, objectPrintInt32],
-            'inputLine' : [typeInputLine, objectInputLine],
-            'inputBool': [typeInputBool, objectInputBool],
-            'inputInt32' : [typeInputInt32, objectInputInt32]
+            'print' : [0, typePrint, objectPrint],
+            'printBool' : [1, typePrintBool, objectPrintBool],
+            'printInt32' : [2, typePrintInt32, objectPrintInt32],
+            'inputLine' : [3, typeInputLine, objectInputLine],
+            'inputBool': [4, typeInputBool, objectInputBool],
+            'inputInt32' : [5, typeInputInt32, objectInputInt32]
         }
 
         newType = ir.FunctionType(objectStruct.as_pointer(), [])
@@ -428,52 +427,59 @@ class CodeGen():
         self.dict[class_name]['methods'].update(self.dict[self.extends[class_name]]['methods'].copy())
         self.dict[class_name]['fields'].update(self.dict[self.extends[class_name]]['fields'].copy())
 
-        # for key in self.dict[self.extends[class_name]]['fields'].keys():
-        #     self.dict[class_name]['fields'][key] = self.dict[self.extends[class_name]]['fields'][key].copy()
-        #     classBody.append(self.dict[self.extends[class_name]]['fields'][key][1].copy())
+        for key in self.dict[self.extends[class_name]]['fields'].keys():
+             self.dict[class_name]['fields'][key] = self.dict[self.extends[class_name]]['fields'][key].copy()
 
         for key in self.dict[self.extends[class_name]]['methods'].keys():
             self.dict[class_name]['methods'][key] = self.dict[self.extends[class_name]]['methods'][key].copy()
-            #classVTbody.append(self.dict[self.extends[class_name]]['methods'][key][0])
+
+        # Get field and method number in parent
+        nbMethod = len(self.dict[class_name]['methods'])
+        nbFields = len(self.dict[class_name]['fields']) + 1
 
         # Set class methods inside dictionary and classVT body list
-        if len(self.methods_dict[class_name]) == 0:
-            self.dict[class_name]['methods'] = {}
-        else:
-            for method in self.methods_dict[class_name]:
-                if method[1] in self.types:
-                    returnType = self.types[method[1]]
+        for method in self.methods_dict[class_name]:
+            if method[1] in self.types:
+                returnType = self.types[method[1]]
+            else:
+                returnType = self.dict[method[1]]['struct']
+
+            argsType  = [classStruct.as_pointer()]
+            for arg in self.formals_dict[(class_name, method[0])]:
+                if arg[1] in self.types:
+                    argsType.append(self.types[arg[1]])
                 else:
-                    returnType = self.dict[method[1]]['struct']
+                    argsType.append(self.dict[arg[1]]['struct'])
+            
+            typeMethod = ir.FunctionType(returnType.as_pointer(), argsType)
+            if method[0] == "main":
+                methodFct = ir.Function(self.module, typeMethod, name="main")
+            else:
+                methodFct = ir.Function(self.module, typeMethod, name=class_name+"__"+method[0])
 
-                argsType  = [classStruct.as_pointer()]
-                for arg in self.formals_dict[(class_name, method[0])]:
-                    if arg[1] in self.types:
-                        argsType.append(self.types[arg[1]])
-                    else:
-                        argsType.append(self.dict[arg[1]]['struct'])
-                
-                typeMethod = ir.FunctionType(returnType.as_pointer(), argsType)
-                if method[0] == "main":
-                    classMethod = ir.Function(self.module, typeMethod, name="main")
-                else:
-                    classMethod = ir.Function(self.module, typeMethod, name=class_name+"__"+method[0])
+            methodObj = self.dict[class_name]['methods'].get(method[0])
+            # Override if method already exists
+            if methodObj is not None:
+                self.dict[class_name]['methods'][method[0]] = [methodObj[0], typeMethod, methodFct]
+            else:
+                self.dict[class_name]['methods'].update({method[0] : [nbMethod, typeMethod, methodFct]})
+                nbMethod += 1
 
-                classVTbody.append(typeMethod.as_pointer())
-                classMethods.append(classMethod)
-                self.dict[class_name]['methods'].update({method[0] : [typeMethod, classMethod]})
+        for method in self.methods_dict[class_name].items():
 
+            classVTbody[method[1][0]] = method[1][1].as_pointer()
+            classMethods[method[1][0]] =  method[1][2]
+
+            
         # Set class fields in dictionary
-        if len(self.fields_dict[class_name]) == 0:
-            self.dict['Object']['fields'] = {}
-        else:
-            for field in self.fields_dict[class_name]:
-                if field[1] in self.types:
-                    fieldType = self.types[field[1]]
-                else:
-                    fieldType = self.dict[field[1]]['struct']
-                classBody.append(fieldType)
-                self.dict[class_name]["fields"].update({field[0] : fieldType})
+        for field in self.fields_dict[class_name]:
+            if field[1] in self.types:
+                fieldType = self.types[field[1]]
+            else:
+                fieldType = self.dict[field[1]]['struct']
+            classBody.append(fieldType)
+            self.dict[class_name]["fields"].update({field[0] : [nbFields, fieldType]})
+            nbFields += 1
 
         # Set class VT body and class structure body
         classVT.set_body(*classVTbody)

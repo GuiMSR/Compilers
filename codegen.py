@@ -1,7 +1,6 @@
-from llvmlite import ir, binding
 import sys, os
+from llvmlite import ir, binding
 from llvmlite.ir import context
-
 from llvmlite.ir.values import GlobalVariable
 import object
 
@@ -9,7 +8,6 @@ import object
 class variableScope():
 
     # Create new scope for each field and method
-
     def __init__(self):
         self.scopes = [{}]
 
@@ -196,25 +194,24 @@ class CodeGen():
         method_name = node.children[1].values[0]
 
         if class_name == "Main":
-            method_list = self.classes["Object"]["methods"][method_name]
+            method = self.classes["Object"]["methods"][method_name]
         else:
-            method_list = self.classes[class_name]["methods"][method_name]
+            method = self.classes[class_name]["methods"][method_name]
 
-        
         # Recover self argument and function arguments casts
         value = self.compile_tree(node.children[0], builder, scope)
         vTablePtr = builder.gep(value, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
         vtbl = builder.load(vTablePtr)
 
         # Recover function from VT and its arguments
-        fctPtr = builder.gep(vtbl, [self.types['int32'](0), self.types['int32'](method_list[0])], inbounds=True)
+        fctPtr = builder.gep(vtbl, [self.types['int32'](0), self.types['int32'](method[0])], inbounds=True)
         fct = builder.load(fctPtr)
         args = self.compile_args(node.children[2], builder, scope)
 
-        cast = builder.bitcast(value, method_list[2].args[0].type)
+        cast = builder.bitcast(value, method[2].args[0].type)
         fct_args = [cast]
         for i, arg in enumerate(args):
-            cast = builder.bitcast(arg, method_list[2].args[i+1].type)
+            cast = builder.bitcast(arg, method[2].args[i+1].type)
             fct_args.append(cast)
             
         return builder.call(fct, fct_args)
@@ -277,7 +274,7 @@ class CodeGen():
         return builder.neg(self.compile_tree(node.children[0], builder, scope))
 
     def compile_isnull(self, node, builder, scope):
-        typeNull = ir.Constant(self.classes[node.node_class]['struct'], None)
+        typeNull = ir.Constant(self.classes[node.node_class]['pointer'], None)
         return  builder.icmp_unsigned('==', self.compile_tree(node.children[0], builder, scope), typeNull)
 
     def compile_unop(self, node, builder, scope):
@@ -294,7 +291,7 @@ class CodeGen():
         if node.type in self.types:
             returnType = self.types[node.type]
         else:
-            returnType = self.classes[node.type]['struct']
+            returnType = self.classes[node.type]['pointer']
 
         val = self.compile_tree(node.children[1], builder, scope)
 
@@ -321,7 +318,7 @@ class CodeGen():
         if node.children[0].type in self.types:
             returnType = self.types[node.children[0].type]
         else:
-            returnType = self.classes[node.type]['struct']
+            returnType = self.classes[node.type]['pointer']
 
         ptr = builder.alloca(returnType)
 
@@ -395,7 +392,7 @@ class CodeGen():
             if node.type in self.types:
                 ifType = self.types[node.type]
             else:
-                ifType = self.classes[node.type]['struct']
+                ifType = self.classes[node.type]['pointer']
             ptr = builder.alloca(ifType)
              
             with builder.if_else(self.compile_tree(node.children[0], builder, scope)) as (then, otherwise):
@@ -450,23 +447,23 @@ class CodeGen():
     def compile_object(self):
         objModule = ir.Module(name='objModule')
 
-        objectStruct = ir.Context().get_identified_type("Object")
+        objectPointer = ir.Context().get_identified_type("Object")
         objectVT = ir.Context().get_identified_type("ObjectVTable")
 
         # Set Object structure body
-        objectStruct.set_body(*[objectVT.as_pointer()])
+        objectPointer.set_body(*[objectVT.as_pointer()])
 
         # C malloc function declaration
         mallocType = ir.FunctionType(ir.IntType(8).as_pointer(), [ir.IntType(64)])
         self.malloc = ir.Function(objModule, mallocType, name='malloc')
 
         # Type of methods in Object VT
-        typePrint = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer(), self.types['string']])
-        typePrintBool = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer(), self.types['bool']])
-        typePrintInt32 = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer(), self.types['int32']])
-        typeInputLine = ir.FunctionType(self.types['string'], [objectStruct.as_pointer()])
-        typeInputBool = ir.FunctionType(self.types['bool'], [objectStruct.as_pointer()])
-        typeInputInt32 = ir.FunctionType(self.types['int32'], [objectStruct.as_pointer()])
+        typePrint = ir.FunctionType(objectPointer.as_pointer(), [objectPointer.as_pointer(), self.types['string']])
+        typePrintBool = ir.FunctionType(objectPointer.as_pointer(), [objectPointer.as_pointer(), self.types['bool']])
+        typePrintInt32 = ir.FunctionType(objectPointer.as_pointer(), [objectPointer.as_pointer(), self.types['int32']])
+        typeInputLine = ir.FunctionType(self.types['string'], [objectPointer.as_pointer()])
+        typeInputBool = ir.FunctionType(self.types['bool'], [objectPointer.as_pointer()])
+        typeInputInt32 = ir.FunctionType(self.types['int32'], [objectPointer.as_pointer()])
 
 
         # Methods of Object
@@ -482,8 +479,8 @@ class CodeGen():
         objectVT.set_body(*objectVTbody)
 
 
-        self.classes['Object']['struct'] = objectStruct.as_pointer()
-        self.classes['Object']['VTstruct'] = objectVT
+        self.classes['Object']['pointer'] = objectPointer.as_pointer()
+        self.classes['Object']['VTable'] = objectVT
 
         self.classes['Object']['fields'] = {}
 
@@ -496,14 +493,14 @@ class CodeGen():
             'inputInt32' : [5, typeInputInt32, objectInputInt32]
         }
 
-        newType = ir.FunctionType(objectStruct.as_pointer(), [])
+        newType = ir.FunctionType(objectPointer.as_pointer(), [])
         self.classes['Object']['new'] = ir.Function(objModule, newType, name='Object___new')
-        initType = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer()])
+        initType = ir.FunctionType(objectPointer.as_pointer(), [objectPointer.as_pointer()])
         self.classes['Object']['init'] = ir.Function(objModule, initType, name="Object___init")
 
 
     def compile_class(self, class_name):
-        classStruct = ir.global_context.get_identified_type(class_name)
+        classPointer = ir.global_context.get_identified_type(class_name)
         classVT = ir.global_context.get_identified_type(class_name+"VT")
 
         # Set class structure body
@@ -531,14 +528,14 @@ class CodeGen():
             if method[1] in self.types:
                 returnType = self.types[method[1]]
             else:
-                returnType = self.classes[method[1]]['struct']
+                returnType = self.classes[method[1]]['pointer']
 
-            argsType  = [classStruct.as_pointer()]
+            argsType  = [classPointer.as_pointer()]
             for arg in self.formals_dict[(class_name, method[0])]:
                 if arg[1] in self.types:
                     argsType.append(self.types[arg[1]])
                 else:
-                    argsType.append(self.classes[arg[1]]['struct'])
+                    argsType.append(self.classes[arg[1]]['pointer'])
             
             typeMethod = ir.FunctionType(returnType, argsType)
             if method[0] == "main":
@@ -567,7 +564,7 @@ class CodeGen():
             if field[1] in self.types:
                 fieldType = self.types[field[1]]
             else:
-                fieldType = self.classes[field[1]]['struct']
+                fieldType = self.classes[field[1]]['pointer']
             
             classBody.append(fieldType)
             self.classes[class_name]["fields"][field[0]] = [nbFields, fieldType]
@@ -576,19 +573,19 @@ class CodeGen():
 
         # Set class VT body and class structure body
         classVT.set_body(*classVTbody)
-        classStruct.set_body(*classBody)
+        classPointer.set_body(*classBody)
 
 
         # Set structure and VT structure in dictionary
-        self.classes[class_name]['struct'] = classStruct.as_pointer()
-        self.classes[class_name]['VTstruct'] = classVT
+        self.classes[class_name]['pointer'] = classPointer.as_pointer()
+        self.classes[class_name]['VTable'] = classVT
 
 
         # New and Init functions
-        newType = ir.FunctionType(classStruct.as_pointer(), [])
+        newType = ir.FunctionType(classPointer.as_pointer(), [])
         newFct = ir.Function(self.module, newType, name=class_name+'___new')
         self.classes[class_name]['new'] = newFct
-        initType = ir.FunctionType(classStruct.as_pointer(), [classStruct.as_pointer()])
+        initType = ir.FunctionType(classPointer.as_pointer(), [classPointer.as_pointer()])
         initFct = ir.Function(self.module, initType, name=class_name+'___init')
         self.classes[class_name]['init'] = initFct
 
@@ -597,12 +594,12 @@ class CodeGen():
         block = newFct.append_basic_block()
         builder = ir.IRBuilder(block)
 
-        nullSize = ir.Constant(self.classes[class_name]['struct'], None)
+        nullSize = ir.Constant(self.classes[class_name]['pointer'], None)
         sizePtr = builder.gep(nullSize, [self.types["int32"](1)], inbounds=False, name="size_ptr")
         sizeI64 = builder.ptrtoint(sizePtr, ir.IntType(64), name="size_i64")
 
         mallocPtr = builder.call(self.malloc, [sizeI64])
-        cast = builder.bitcast(mallocPtr, self.classes[class_name]['struct'])
+        cast = builder.bitcast(mallocPtr, self.classes[class_name]['pointer'])
         retVal = builder.call(initFct, [cast])
         builder.ret(retVal)
 
@@ -614,13 +611,13 @@ class CodeGen():
         with builder.if_then(builder.icmp_unsigned('!=', arg, nullSize)):
 
             # .super function from parent
-            cast = builder.bitcast(arg, self.classes[self.extends[class_name]]['struct'])
+            cast = builder.bitcast(arg, self.classes[self.extends[class_name]]['pointer'])
             call = builder.call(self.classes[self.extends[class_name]]['init'], [cast])
 
             # Vtable
             ptr = builder.gep(arg, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
-            value = ir.Constant(self.classes[class_name]['VTstruct'], classMethods)
-            classVTable = ir.GlobalVariable(self.module, self.classes[class_name]['VTstruct'], name=class_name+'_vtable')
+            value = ir.Constant(self.classes[class_name]['VTable'], classMethods)
+            classVTable = ir.GlobalVariable(self.module, self.classes[class_name]['VTable'], name=class_name+'_vtable')
             classVTable.global_constant = True
             classVTable.initializer = value
             builder.store(classVTable, ptr)

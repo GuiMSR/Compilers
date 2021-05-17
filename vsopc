@@ -90,7 +90,6 @@ def main():
         syntax_tree.set_parent_nodes(parsed, None)
         codegen = CodeGen(parsed, dictionaries)
         codegen.codeGeneration()
-        print(str(codegen.module))
         codegen.save_ir(text_file_name[:-5])  
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ class CodeGen():
             'unit'  : ir.VoidType()
             }
 
-        self.dict = {'Object': {}}
+        self.classes = {'Object': {}}
         self.compile_object()
         self.compile_classes()
         self.compile_program(self.tree)
@@ -113,8 +113,7 @@ class CodeGen():
             "while": self.compile_while,
             "if": self.compile_if,
             "block": self.compile_block,
-            #"method": self.compile_method,
-            "class" : self.compile_classe_inside
+            "class" : self.compile_class_inside
         }    
         i = switcher[node.name](node, builder, scope)
         return i
@@ -131,7 +130,7 @@ class CodeGen():
 
         if node.name == "string literal":
             string = node.values[0][1:-1]
-            
+
             #Convert \xhh to utf8
             string = string.replace('\\x09', bytearray.fromhex('09').decode())
             string = string.replace('\\x0a', bytearray.fromhex('0a').decode())
@@ -157,16 +156,16 @@ class CodeGen():
             if ptr is not None:
                 value = builder.load(ptr)
             else:
-                field = self.dict[node.node_class]['fields'].get(node.values[0])
+                field = self.classes[node.node_class]['fields'].get(node.values[0])
                 selfPtr = scope.getValue(node.node_class)
                 ld = builder.load(selfPtr)
                 fctType = builder.gep(ld, [self.types['int32'](0), self.types['int32'](field[0])], inbounds=True)
                 value = builder.load(fctType)
             return value
         
-    def compile_classe_inside(self, node, builder, scope):
+    def compile_class_inside(self, node, builder, scope):
         for method in node.children[1].children:
-            fct = self.dict[node.values[0]]['methods'][method.children[0].values[0]][2]
+            fct = self.classes[node.values[0]]['methods'][method.children[0].values[0]][2]
             block = fct.append_basic_block()
             builder = ir.IRBuilder(block)
             self.compile_tree(method, builder, scope)
@@ -182,7 +181,7 @@ class CodeGen():
         return i
 
     def compile_new_type(self, node, builder, scope):
-        return builder.call(self.dict[node.values[0]]['new'], [])
+        return builder.call(self.classes[node.values[0]]['new'], [])
 
     def compile_args(self, node, builder, scope):
         args = []
@@ -197,9 +196,9 @@ class CodeGen():
         method_name = node.children[1].values[0]
 
         if class_name == "Main":
-            method_list = self.dict["Object"]["methods"][method_name]
+            method_list = self.classes["Object"]["methods"][method_name]
         else:
-            method_list = self.dict[class_name]["methods"][method_name]
+            method_list = self.classes[class_name]["methods"][method_name]
 
         
         # Recover self argument and function arguments casts
@@ -278,7 +277,7 @@ class CodeGen():
         return builder.neg(self.compile_tree(node.children[0], builder, scope))
 
     def compile_isnull(self, node, builder, scope):
-        typeNull = ir.Constant(self.dict[node.node_class]['struct'], None)
+        typeNull = ir.Constant(self.classes[node.node_class]['struct'], None)
         return  builder.icmp_unsigned('==', self.compile_tree(node.children[0], builder, scope), typeNull)
 
     def compile_unop(self, node, builder, scope):
@@ -295,7 +294,7 @@ class CodeGen():
         if node.type in self.types:
             returnType = self.types[node.type]
         else:
-            returnType = self.dict[node.type]['struct']
+            returnType = self.classes[node.type]['struct']
 
         val = self.compile_tree(node.children[1], builder, scope)
 
@@ -307,8 +306,7 @@ class CodeGen():
 
         # If field
         else:
-            field = self.dict[node.node_class]['fields'][node.children[0].values[0]]
-            print(field)
+            field = self.classes[node.node_class]['fields'][node.children[0].values[0]]
             selfPtr = scope.getValue('self')
             ld = builder.load(selfPtr)
             fieldPtr = builder.gep(ld, self.types['int32'](0), self.types['int32'](field[0]), inbounds=True)
@@ -323,7 +321,7 @@ class CodeGen():
         if node.children[0].type in self.types:
             returnType = self.types[node.children[0].type]
         else:
-            returnType = self.dict[node.type]['struct']
+            returnType = self.classes[node.type]['struct']
 
         ptr = builder.alloca(returnType)
 
@@ -397,7 +395,7 @@ class CodeGen():
             if node.type in self.types:
                 ifType = self.types[node.type]
             else:
-                ifType = self.dict[node.type]['struct']
+                ifType = self.classes[node.type]['struct']
             ptr = builder.alloca(ifType)
              
             with builder.if_else(self.compile_tree(node.children[0], builder, scope)) as (then, otherwise):
@@ -425,17 +423,16 @@ class CodeGen():
     def compile_method(self, node):
         # Create new scope and builder
         scope = variableScope()
-        block = self.dict[node.node_class]["methods"][node.children[0].values[0]][2].append_basic_block()
+        block = self.classes[node.node_class]["methods"][node.children[0].values[0]][2].append_basic_block()
         builder = ir.IRBuilder(block)
 
         # Allocate memory for 'self'
-        args = self.dict[node.node_class]['methods'][node.children[0].values[0]][2].args
+        args = self.classes[node.node_class]['methods'][node.children[0].values[0]][2].args
         ptr = builder.alloca(args[0].type)
         builder.store(args[0], ptr)
         scope.addVariable('self', ptr)
 
         # Allocate memory for every argument
-        print(node.children[1].name)
         for i, formal in enumerate(node.children[1].children):
             ptr = builder.alloca(args[i+1].type)
             builder.store(args[i+1], ptr)
@@ -485,12 +482,12 @@ class CodeGen():
         objectVT.set_body(*objectVTbody)
 
 
-        self.dict['Object']['struct'] = objectStruct.as_pointer()
-        self.dict['Object']['VTstruct'] = objectVT
+        self.classes['Object']['struct'] = objectStruct.as_pointer()
+        self.classes['Object']['VTstruct'] = objectVT
 
-        self.dict['Object']['fields'] = {}
+        self.classes['Object']['fields'] = {}
 
-        self.dict['Object']['methods'] = {
+        self.classes['Object']['methods'] = {
             'print' : [0, typePrint, objectPrint],
             'printBool' : [1, typePrintBool, objectPrintBool],
             'printInt32' : [2, typePrintInt32, objectPrintInt32],
@@ -500,9 +497,9 @@ class CodeGen():
         }
 
         newType = ir.FunctionType(objectStruct.as_pointer(), [])
-        self.dict['Object']['new'] = ir.Function(objModule, newType, name='Object___new')
+        self.classes['Object']['new'] = ir.Function(objModule, newType, name='Object___new')
         initType = ir.FunctionType(objectStruct.as_pointer(), [objectStruct.as_pointer()])
-        self.dict['Object']['init'] = ir.Function(objModule, initType, name="Object___init")
+        self.classes['Object']['init'] = ir.Function(objModule, initType, name="Object___init")
 
 
     def compile_class(self, class_name):
@@ -514,34 +511,34 @@ class CodeGen():
 
         # Deep copy from parent class
         # Be careful ! Not update to avoid linking between dictionaries
-        self.dict[class_name] = self.dict[self.extends[class_name]].copy()
-        self.dict[class_name]['methods'] = self.dict[self.extends[class_name]]['methods'].copy()
-        self.dict[class_name]['fields'] = self.dict[self.extends[class_name]]['fields'].copy()
+        self.classes[class_name] = self.classes[self.extends[class_name]].copy()
+        self.classes[class_name]['methods'] = self.classes[self.extends[class_name]]['methods'].copy()
+        self.classes[class_name]['fields'] = self.classes[self.extends[class_name]]['fields'].copy()
 
-        for field in self.dict[self.extends[class_name]]['fields'].keys():
-             self.dict[class_name]['fields'][field] = self.dict[self.extends[class_name]]['fields'][field].copy()
+        for field in self.classes[self.extends[class_name]]['fields'].keys():
+             self.classes[class_name]['fields'][field] = self.classes[self.extends[class_name]]['fields'][field].copy()
 
-        for method in self.dict[self.extends[class_name]]['methods'].keys():
-            self.dict[class_name]['methods'][method] = self.dict[self.extends[class_name]]['methods'][method].copy()
+        for method in self.classes[self.extends[class_name]]['methods'].keys():
+            self.classes[class_name]['methods'][method] = self.classes[self.extends[class_name]]['methods'][method].copy()
 
 
         # Get field and method number in parent
-        nbMethod = len(self.dict[class_name]['methods'])
-        nbFields = len(self.dict[class_name]['fields']) + 1
+        nbMethod = len(self.classes[class_name]['methods'])
+        nbFields = len(self.classes[class_name]['fields']) + 1
 
         # Set class methods inside dictionary and classVT body list
         for method in self.methods_dict[class_name]:
             if method[1] in self.types:
                 returnType = self.types[method[1]]
             else:
-                returnType = self.dict[method[1]]['struct']
+                returnType = self.classes[method[1]]['struct']
 
             argsType  = [classStruct.as_pointer()]
             for arg in self.formals_dict[(class_name, method[0])]:
                 if arg[1] in self.types:
                     argsType.append(self.types[arg[1]])
                 else:
-                    argsType.append(self.dict[arg[1]]['struct'])
+                    argsType.append(self.classes[arg[1]]['struct'])
             
             typeMethod = ir.FunctionType(returnType, argsType)
             if method[0] == "main":
@@ -549,18 +546,18 @@ class CodeGen():
             else:
                 methodFct = ir.Function(self.module, typeMethod, name=class_name+"__"+method[0])
 
-            methodObj = self.dict[class_name]['methods'].get(method[0])
+            methodObj = self.classes[class_name]['methods'].get(method[0])
             # Override if method already exists
             if methodObj is not None:
-                self.dict[class_name]['methods'][method[0]] = [methodObj[0], typeMethod, methodFct]
+                self.classes[class_name]['methods'][method[0]] = [methodObj[0], typeMethod, methodFct]
             else:
-                self.dict[class_name]['methods'][method[0]] = [nbMethod, typeMethod, methodFct]
+                self.classes[class_name]['methods'][method[0]] = [nbMethod, typeMethod, methodFct]
                 nbMethod += 1
 
-        classVTbody = [None] * len(self.dict[class_name]['methods'])
-        classMethods = [None] * len(self.dict[class_name]['methods'])
+        classVTbody = [None] * len(self.classes[class_name]['methods'])
+        classMethods = [None] * len(self.classes[class_name]['methods'])
 
-        for method in self.dict[class_name]['methods'].items():
+        for method in self.classes[class_name]['methods'].items():
             classVTbody[method[1][0]] = method[1][1].as_pointer()
             classMethods[method[1][0]] =  method[1][2]
 
@@ -570,10 +567,10 @@ class CodeGen():
             if field[1] in self.types:
                 fieldType = self.types[field[1]]
             else:
-                fieldType = self.dict[field[1]]['struct']
+                fieldType = self.classes[field[1]]['struct']
             
             classBody.append(fieldType)
-            self.dict[class_name]["fields"][field[0]] = [nbFields, fieldType]
+            self.classes[class_name]["fields"][field[0]] = [nbFields, fieldType]
             nbFields += 1
         
 
@@ -583,29 +580,29 @@ class CodeGen():
 
 
         # Set structure and VT structure in dictionary
-        self.dict[class_name]['struct'] = classStruct.as_pointer()
-        self.dict[class_name]['VTstruct'] = classVT
+        self.classes[class_name]['struct'] = classStruct.as_pointer()
+        self.classes[class_name]['VTstruct'] = classVT
 
 
         # New and Init functions
         newType = ir.FunctionType(classStruct.as_pointer(), [])
         newFct = ir.Function(self.module, newType, name=class_name+'___new')
-        self.dict[class_name]['new'] = newFct
+        self.classes[class_name]['new'] = newFct
         initType = ir.FunctionType(classStruct.as_pointer(), [classStruct.as_pointer()])
         initFct = ir.Function(self.module, initType, name=class_name+'___init')
-        self.dict[class_name]['init'] = initFct
+        self.classes[class_name]['init'] = initFct
 
 
         # New initialization and block builder
         block = newFct.append_basic_block()
         builder = ir.IRBuilder(block)
 
-        nullSize = ir.Constant(self.dict[class_name]['struct'], None)
+        nullSize = ir.Constant(self.classes[class_name]['struct'], None)
         sizePtr = builder.gep(nullSize, [self.types["int32"](1)], inbounds=False, name="size_ptr")
         sizeI64 = builder.ptrtoint(sizePtr, ir.IntType(64), name="size_i64")
 
         mallocPtr = builder.call(self.malloc, [sizeI64])
-        cast = builder.bitcast(mallocPtr, self.dict[class_name]['struct'])
+        cast = builder.bitcast(mallocPtr, self.classes[class_name]['struct'])
         retVal = builder.call(initFct, [cast])
         builder.ret(retVal)
 
@@ -617,13 +614,13 @@ class CodeGen():
         with builder.if_then(builder.icmp_unsigned('!=', arg, nullSize)):
 
             # .super function from parent
-            cast = builder.bitcast(arg, self.dict[self.extends[class_name]]['struct'])
-            call = builder.call(self.dict[self.extends[class_name]]['init'], [cast])
+            cast = builder.bitcast(arg, self.classes[self.extends[class_name]]['struct'])
+            call = builder.call(self.classes[self.extends[class_name]]['init'], [cast])
 
             # Vtable
             ptr = builder.gep(arg, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
-            value = ir.Constant(self.dict[class_name]['VTstruct'], classMethods)
-            classVTable = ir.GlobalVariable(self.module, self.dict[class_name]['VTstruct'], name=class_name+'_vtable')
+            value = ir.Constant(self.classes[class_name]['VTstruct'], classMethods)
+            classVTable = ir.GlobalVariable(self.module, self.classes[class_name]['VTstruct'], name=class_name+'_vtable')
             classVTable.global_constant = True
             classVTable.initializer = value
             builder.store(classVTable, ptr)
@@ -631,7 +628,7 @@ class CodeGen():
             # Initialize fields
 
             # Get parent's fields number
-            l = len(self.dict[self.extends[class_name]]['fields'])
+            l = len(self.classes[self.extends[class_name]]['fields'])
             for child in self.tree.children:
                 if child.values[0] == class_name:
                     classNode = child
@@ -663,7 +660,7 @@ class CodeGen():
                         builder.store(strPtr, fieldPtr)
                     
                     else:
-                        nullPtr = ir.Constant(self.dict[class_name]['fields'][field.children[0].values[0]][0], None)
+                        nullPtr = ir.Constant(self.classes[class_name]['fields'][field.children[0].values[0]][0], None)
                         builder.store(nullPtr, fieldPtr)
 
 
@@ -672,11 +669,11 @@ class CodeGen():
 
     def compile_main(self, node):
         scope = variableScope()
-        block = self.dict["Main"]["methods"]["main"][2].append_basic_block()
+        block = self.classes["Main"]["methods"]["main"][2].append_basic_block()
         builder = ir.IRBuilder(block)
         
-        main = builder.call(self.dict['Main']['new'], [])
-        args = self.dict["Main"]["methods"]["main"][2].args
+        main = builder.call(self.classes['Main']['new'], [])
+        args = self.classes["Main"]["methods"]["main"][2].args
         ptr = builder.alloca(args[0].type)
         builder.store(main, ptr)
 
@@ -693,19 +690,19 @@ class CodeGen():
 
 
     def compile_extends(self, class_name):
-        if self.extends[class_name] not in self.dict:
+        if self.extends[class_name] not in self.classes:
             self.compile_extends(self.extends[class_name])
 
-        elif class_name not in self.dict:
+        elif class_name not in self.classes:
             self.compile_class(class_name)
 
 
     def compile_classes(self):
         for class_name in self.extends:
-            while self.extends[class_name] not in self.dict:
+            while self.extends[class_name] not in self.classes:
                 self.compile_extends(class_name)
             
-            if class_name not in self.dict:
+            if class_name not in self.classes:
                 self.compile_class(class_name)
 
 

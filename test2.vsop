@@ -1,12 +1,6 @@
 class Main {
-    x : int32;
-
     main() : int32 {
-        let y : int32 in {
-            x <- y <- 1984;
-            printInt32(y).print("\n")
-        };
-        printInt32(x).print("\n");
+        printInt32(5^2);
         0
     }
 }

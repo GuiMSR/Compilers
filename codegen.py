@@ -37,6 +37,7 @@ class CodeGen():
         self.methods_dict = dictionaries[1]
         self.fields_dict = dictionaries[0]
         self.formals_dict = dictionaries[3]
+        self.pow = None
         self.module = ir.Module(name="vsop")
         self.binding = binding
         self.binding.initialize()
@@ -70,7 +71,7 @@ class CodeGen():
         os.system('llc ' + filename + '.ll')
         os.system('clang ' + filename + '.s -lm -o ' + filename) 
 
-    def print_ir(self):
+    def print_ir(self): 
         result = str(self.module).split('\n', 3)[3]
         object_ll = object.getObject()
         result = object_ll + result
@@ -108,22 +109,17 @@ class CodeGen():
             "binop": self.compile_binop,
             "unop": self.compile_unop,
             "assign": self.compile_assign,
-            "let": self.print_let,
+            "let": self.compile_let,
             "while": self.compile_while,
             "if": self.compile_if,
             "block": self.compile_block,
-            "formals": self.print_list,
-            "formal": self.print_formal,
-            "method": self.compile_method,
-            "field": self.print_field,
-            "methods": self.print_list,
-            "fields": self.print_list
+            #"method": self.compile_method,
+            "class" : self.compile_classe_inside
         }    
         i = switcher[node.name](node, builder, scope)
         return i
 
     def compile_expression(self, node, builder, scope):
-
         if node.name == "boolean literal":
             value = 0 if node.values[0] == 'false' else 1
             i = ir.Constant(ir.IntType(1), value)
@@ -135,8 +131,8 @@ class CodeGen():
 
         if node.name == "string literal":
             string = node.values[0][1:-1]
+            
             #Convert \xhh to utf8
-
             string = string.replace('\\x09', bytearray.fromhex('09').decode())
             string = string.replace('\\x0a', bytearray.fromhex('0a').decode())
             string = string.replace('\\x08', bytearray.fromhex('08').decode())
@@ -157,9 +153,7 @@ class CodeGen():
             return i
 
         if node.name == "object identifier" or node.name == "self":
-
             ptr = scope.getValue(node.values[0])
-
             if ptr is not None:
                 value = builder.load(ptr)
             else:
@@ -168,14 +162,15 @@ class CodeGen():
                 ld = builder.load(selfPtr)
                 fctType = builder.gep(ld, [self.types['int32'](0), self.types['int32'](field[0])], inbounds=True)
                 value = builder.load(fctType)
-
             return value
+        
+    def compile_classe_inside(self, node, builder, scope):
+        for method in node.children[1].children:
+            fct = self.dict[node.values[0]]['methods'][method.children[0].values[0]][2]
+            block = fct.append_basic_block()
+            builder = ir.IRBuilder(block)
+            self.compile_tree(method, builder, scope)
 
-    def print_list(self, node, with_types):
-        strings = []
-        for child in node.children:
-            strings.append(self.print_tree(child, with_types))
-        return "[" + ', '.join(strings) + "]"
 
     def compile_block(self, node, builder, scope):
         scope.addScope()
@@ -238,8 +233,19 @@ class CodeGen():
     def compile_div(self, node, builder, scope):
         return builder.udiv(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
-    def compile_pow(self, node, builder, scope): # Change op
-        return builder.udiv(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
+    def compile_pow(self, node, builder, scope):
+        args = []
+        # Convert int21 to double
+        args.append(builder.uitofp(self.compile_tree(node.children[0], builder, scope), ir.DoubleType()))
+        args.append(builder.uitofp(self.compile_tree(node.children[1], builder, scope), ir.DoubleType()))
+        # Call pow function
+        if self.pow is None:
+            powType = ir.FunctionType(ir.DoubleType(), [ir.DoubleType(), ir.DoubleType()])
+            self.pow = ir.Function(self.module, powType, name="pow")
+
+        call = builder.call(self.pow, args)
+        # Return value after conversion to int32
+        return builder.fptoui(call, self.types['int32'])
 
     def compile_comp(self, node, builder, scope):
         if node.values[0] != "=":
@@ -291,67 +297,157 @@ class CodeGen():
         else:
             returnType = self.dict[node.type]['struct']
 
-        val = self.compile_tree(node.children, builder, scope)
+        val = self.compile_tree(node.children[1], builder, scope)
 
         # Store if argument
         ptr = scope.getValue(node.children[0].values[0])
-        if ptr is None:
+        if ptr is not None:
             cast = builder.bitcast(val, returnType)
             builder.store(cast, ptr)
 
         # If field
         else:
-            field = self.dict[node.node_class]['fields'][node.values[0]]
+            field = self.dict[node.node_class]['fields'][node.children[0].values[0]]
+            print(field)
             selfPtr = scope.getValue('self')
             ld = builder.load(selfPtr)
             fieldPtr = builder.gep(ld, self.types['int32'](0), self.types['int32'](field[0]), inbounds=True)
-            cast = builder.cast(val, field[0])
+            cast = builder.cast(val, field[1])
             builder.store(cast, fieldPtr)
 
         return val 
 
-    def print_let(self, node, with_types):
-        if with_types and not node.type is None:
-            if len(node.children) == 3:
-                return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], 1) + ", " + self.print_tree(node.children[2], 1) +") : " + node.type
-            return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], 1) +") : " + node.type
-        if len(node.children) == 3:
-            return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], with_types) + ", " + self.print_tree(node.children[2], with_types) +")"
-        return "Let(" + self.print_tree(node.children[0], 0) + ", " + node.children[0].type + ", " + self.print_tree(node.children[1], with_types) +")"
+    def compile_let(self, node, builder, scope):
+        
+        # Get type of object identifier in let
+        if node.children[0].type in self.types:
+            returnType = self.types[node.children[0].type]
+        else:
+            returnType = self.dict[node.type]['struct']
+
+        ptr = builder.alloca(returnType)
+
+        if len(node.children) == 2: 
+            # Initialize variable with default one
+            if node.type == "int32":
+                builder.store(self.types['int32'](0), ptr)
+            
+            elif node.type == "bool":
+                builder.store(self.types['bool'](0), ptr)
+            
+            elif node.type == "string":
+                cst = ir.Constant(ir.ArrayType(ir.IntType(8), len(chr(0))), bytearray(chr(0).encode('utf8')))
+                globalStr = ir.GlobalVariable(self.module, cst.type, self.module.get_unique_name('string'))
+                globalStr.global_constant = True
+                globalStr.initializer = cst
+                builder.store(globalStr, ptr)
+            
+            else:
+                # Initialize to null at default 
+                null = ir.Constant(returnType, None)
+                builder.store(null, ptr)
+        
+        else:
+            # Initialize variable with expression (assign)
+            val = self.compile_tree(node.children[1], builder, scope)
+            cast = builder.bitcast(val, returnType)
+            builder.store(cast, ptr)
+        
+        scope.addScope()
+        scope.addVariable(node.children[0].values[0],ptr)
+
+        # Compile inside the let
+        if len(node.children) == 2:
+            insideLet = self.compile_tree(node.children[1], builder, scope)
+        else:
+            insideLet = self.compile_tree(node.children[2], builder, scope)
+        
+        scope.removeScope()
+        return insideLet
+            
 
     def compile_while(self, node, builder, scope):
 
-        with builder.if_then(self.compile_tree(node.children[0], builder, scope)):
-            i = self.compile_tree(node.children[1], builder, scope)
-            builder.branch(builder.block)
-        return i
+        whileCond = builder.function.append_basic_block(name='while_cond')
+        whileBod = builder.function.append_basic_block(name='while_body')
+        whileExit = builder.funciton.append_basic_block(name='while_exit')
+
+        
+        # Block for condition
+        builder.branch(whileCond)
+        builder.position_at_end(whileCond)
+
+        # Branch to right block
+        cond = self.compile_tree(node.children[0], builder, scope)
+        builder.cbranch(cond, whileBod, whileExit)
+
+        # Block for block entry
+        builder.position_at_end(whileBod)
+        builder.branch(cond)
+
+        # Block for end of while (no need to branch)
+        builder.position_at_end(whileExit)
+        
+        return self.types['unit']
 
     def compile_if(self, node, builder, scope):
 
         if len(node.children) == 3:
+
+            if node.type in self.types:
+                ifType = self.types[node.type]
+            else:
+                ifType = self.dict[node.type]['struct']
+            ptr = builder.alloca(ifType)
+             
             with builder.if_else(self.compile_tree(node.children[0], builder, scope)) as (then, otherwise):
                 with then:
-                    i = self.compile_tree(node.children[1], builder, scope)
+                    iThen = self.compile_tree(node.children[1], builder, scope)
+                    cast = builder.bitcast(iThen, ifType)
+                    # Store result in case then
+                    builder.store(cast, ptr)
 
                 with otherwise:
-                    i = self.compile_tree(node.children[2], builder, scope)
+                    iElse = self.compile_tree(node.children[2], builder, scope)
+                    cast = builder.bitcast(iElse, ifType)
+                    # Store result in case else
+                    builder.store(cast, ptr)
+            return builder.load(ptr)
+
         else:
             with builder.if_then(self.compile_tree(node.children[0], builder, scope)):
                 i = self.compile_tree(node.chilren[1], builder, scope)
-        
-        return i
+                # If only then, return void
+                i = self.types['unit']
+            return i
 
-    def print_formal(self, node, builder, scope):
-        return self.compile_expression(node, 1)
 
-    def compile_method(self, node, builder, scope):
-        return 
+    def compile_method(self, node):
+        # Create new scope and builder
+        scope = variableScope()
+        block = self.dict[node.node_class]["methods"][node.children[0].values[0]][2].append_basic_block()
+        builder = ir.IRBuilder(block)
+
+        # Allocate memory for 'self'
+        args = self.dict[node.node_class]['methods'][node.children[0].values[0]][2].args
+        ptr = builder.alloca(args[0].type)
+        builder.store(args[0], ptr)
+        scope.addVariable('self', ptr)
+
+        # Allocate memory for every argument
+        print(node.children[1].name)
+        for i, formal in enumerate(node.children[1].children):
+            ptr = builder.alloca(args[i+1].type)
+            builder.store(args[i+1], ptr)
+            scope.addVariable(formal.values[0], ptr)
+
+        # Compile body of the method
+        retVal = self.compile_tree(node.children[2], builder, scope)
+        if retVal == self.types['unit']:
+            builder.ret_void()
+        else:
+            builder.ret(retVal)
     
-    
-    def print_field(self, node, with_types):
-        if len(node.children) == 2:
-            return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type + ", " + self.print_tree(node.children[1], with_types) +")"
-        return "\nField(" + self.print_tree(node.children[0], 0) + ", " + node.type +")"
 
 
     def compile_object(self):
@@ -363,6 +459,7 @@ class CodeGen():
         # Set Object structure body
         objectStruct.set_body(*[objectVT.as_pointer()])
 
+        # C malloc function declaration
         mallocType = ir.FunctionType(ir.IntType(8).as_pointer(), [ir.IntType(64)])
         self.malloc = ir.Function(objModule, mallocType, name='malloc')
 
@@ -416,15 +513,17 @@ class CodeGen():
         classBody = [classVT.as_pointer()]
 
         # Deep copy from parent class
+        # Be careful ! Not update to avoid linking between dictionaries
         self.dict[class_name] = self.dict[self.extends[class_name]].copy()
-        self.dict[class_name]['methods'].update(self.dict[self.extends[class_name]]['methods'].copy())
-        self.dict[class_name]['fields'].update(self.dict[self.extends[class_name]]['fields'].copy())
+        self.dict[class_name]['methods'] = self.dict[self.extends[class_name]]['methods'].copy()
+        self.dict[class_name]['fields'] = self.dict[self.extends[class_name]]['fields'].copy()
 
-        for key in self.dict[self.extends[class_name]]['fields'].keys():
-             self.dict[class_name]['fields'][key] = self.dict[self.extends[class_name]]['fields'][key].copy()
+        for field in self.dict[self.extends[class_name]]['fields'].keys():
+             self.dict[class_name]['fields'][field] = self.dict[self.extends[class_name]]['fields'][field].copy()
 
-        for key in self.dict[self.extends[class_name]]['methods'].keys():
-            self.dict[class_name]['methods'][key] = self.dict[self.extends[class_name]]['methods'][key].copy()
+        for method in self.dict[self.extends[class_name]]['methods'].keys():
+            self.dict[class_name]['methods'][method] = self.dict[self.extends[class_name]]['methods'][method].copy()
+
 
         # Get field and method number in parent
         nbMethod = len(self.dict[class_name]['methods'])
@@ -455,7 +554,7 @@ class CodeGen():
             if methodObj is not None:
                 self.dict[class_name]['methods'][method[0]] = [methodObj[0], typeMethod, methodFct]
             else:
-                self.dict[class_name]['methods'].update({method[0] : [nbMethod, typeMethod, methodFct]})
+                self.dict[class_name]['methods'][method[0]] = [nbMethod, typeMethod, methodFct]
                 nbMethod += 1
 
         classVTbody = [None] * len(self.dict[class_name]['methods'])
@@ -472,13 +571,16 @@ class CodeGen():
                 fieldType = self.types[field[1]]
             else:
                 fieldType = self.dict[field[1]]['struct']
+            
             classBody.append(fieldType)
-            self.dict[class_name]["fields"].update({field[0] : [nbFields, fieldType]})
+            self.dict[class_name]["fields"][field[0]] = [nbFields, fieldType]
             nbFields += 1
+        
 
         # Set class VT body and class structure body
         classVT.set_body(*classVTbody)
         classStruct.set_body(*classBody)
+
 
         # Set structure and VT structure in dictionary
         self.dict[class_name]['struct'] = classStruct.as_pointer()
@@ -504,8 +606,8 @@ class CodeGen():
 
         mallocPtr = builder.call(self.malloc, [sizeI64])
         cast = builder.bitcast(mallocPtr, self.dict[class_name]['struct'])
-        ret_val = builder.call(initFct, [cast])
-        builder.ret(ret_val)
+        retVal = builder.call(initFct, [cast])
+        builder.ret(retVal)
 
         # Init initialization and block builder
         block = initFct.append_basic_block()
@@ -529,14 +631,13 @@ class CodeGen():
             # Initialize fields
 
             # Get parent's fields number
-            l = len(self.dict[self.extends[class_name]]['fields']) + 1
+            l = len(self.dict[self.extends[class_name]]['fields'])
             for child in self.tree.children:
                 if child.values[0] == class_name:
                     classNode = child
 
             for i, field in enumerate(classNode.children[0].children):
-
-                fieldPtr = builder.gep(arg, [self.types['int32'](0), self.types['int32'](l+i)])
+                fieldPtr = builder.gep(arg, [self.types['int32'](0), self.types['int32'](l+i+1)])
                 if len(field.children) == 2:
 
                     # Recovers value in tree if assign
@@ -565,6 +666,7 @@ class CodeGen():
                         nullPtr = ir.Constant(self.dict[class_name]['fields'][field.children[0].values[0]][0], None)
                         builder.store(nullPtr, fieldPtr)
 
+
         builder.ret(arg)
 
 
@@ -586,6 +688,8 @@ class CodeGen():
         for child in node.children:
             if child.values[0] == "Main":
                 self.compile_main(child.children[1].children[0])
+            else:
+                self.compile_method(child.children[1].children[0])
 
 
     def compile_extends(self, class_name):

@@ -405,7 +405,7 @@ class VsopParser2():
             sys.stderr.write("{0}:{1}:{2}: semantic error: use of unbound variable {3}\n".format(self.file_name, pos[0], pos[1], p[1]))
             sys.exit(1)
         p[0] = st.Tree_node("assign", [st.Tree_node("object identifier", [], [p[1]], pos, self.current_class), p[3]], [], pos, self.current_class, p[3].type)
-        self.add_variable(p[1], p[3])
+        self.add_variable(p[1], p[3].type)
 
     def p_unary_not(self, p):
         'expression : NOT expression'
@@ -650,5 +650,5 @@ class VsopParser2():
 
     def find_position(self, p, i):
         colno = p.lexpos(i) - self.string_text.rfind('\n', 0, p.lexpos(i))
-        lineno = 1 if p.lineno(i) == 0 else p.lineno(i) - self.string_text.count('\n') * 2
+        lineno = 1 if p.lineno(i) == 0 else p.lineno(i) - self.string_text.count('\n') 
         return (lineno, colno)

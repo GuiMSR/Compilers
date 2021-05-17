@@ -149,7 +149,11 @@ class CodeGen():
             i = ir.VoidType
             return i
 
-        if node.name == "object identifier" or node.name == "self":
+        if node.name == "self":
+            ptr = scope.getValue(node.node_class)
+            return builder.load(ptr)
+
+        if node.name == "object identifier":
             ptr = scope.getValue(node.values[0])
             if ptr is not None:
                 value = builder.load(ptr)
@@ -192,11 +196,7 @@ class CodeGen():
 
         class_name = node.children[0].type
         method_name = node.children[1].values[0]
-
-        if class_name == "Main":
-            method = self.classes["Object"]["methods"][method_name]
-        else:
-            method = self.classes[class_name]["methods"][method_name]
+        method = self.classes[class_name]["methods"][method_name]
 
         # Recover self argument and function arguments casts
         value = self.compile_tree(node.children[0], builder, scope)
@@ -304,10 +304,10 @@ class CodeGen():
         # If field
         else:
             field = self.classes[node.node_class]['fields'][node.children[0].values[0]]
-            selfPtr = scope.getValue('self')
+            selfPtr = scope.getValue(node.node_class)
             ld = builder.load(selfPtr)
-            fieldPtr = builder.gep(ld, self.types['int32'](0), self.types['int32'](field[0]), inbounds=True)
-            cast = builder.cast(val, field[1])
+            fieldPtr = builder.gep(ld, [self.types['int32'](0), self.types['int32'](field[0])], inbounds=True)
+            cast = builder.bitcast(val, field[1])
             builder.store(cast, fieldPtr)
 
         return val 
@@ -363,22 +363,22 @@ class CodeGen():
 
     def compile_while(self, node, builder, scope):
 
-        whileCond = builder.function.append_basic_block(name='while_cond')
+        #whileCond = builder.function.append_basic_block(name='while_cond')
         whileBod = builder.function.append_basic_block(name='while_body')
-        whileExit = builder.funciton.append_basic_block(name='while_exit')
+        whileExit = builder.function.append_basic_block(name='while_exit')
 
-        
         # Block for condition
-        builder.branch(whileCond)
-        builder.position_at_end(whileCond)
+        #builder.branch(whileCond)
+        #builder.position_at_end(whileCond)
 
         # Branch to right block
         cond = self.compile_tree(node.children[0], builder, scope)
         builder.cbranch(cond, whileBod, whileExit)
+        builder.position_at_start(whileExit)
 
         # Block for block entry
-        builder.position_at_end(whileBod)
-        builder.branch(cond)
+        self.compile_tree(node.children[1], builder, scope)
+        builder.position_at_start(whileBod)
 
         # Block for end of while (no need to branch)
         builder.position_at_end(whileExit)
@@ -427,7 +427,7 @@ class CodeGen():
         args = self.classes[node.node_class]['methods'][node.children[0].values[0]][2].args
         ptr = builder.alloca(args[0].type)
         builder.store(args[0], ptr)
-        scope.addVariable('self', ptr)
+        scope.addVariable(node.node_class, ptr)
 
         # Allocate memory for every argument
         for i, formal in enumerate(node.children[1].children):
@@ -657,7 +657,7 @@ class CodeGen():
                         builder.store(strPtr, fieldPtr)
                     
                     else:
-                        nullPtr = ir.Constant(self.classes[class_name]['fields'][field.children[0].values[0]][0], None)
+                        nullPtr = ir.Constant(self.classes[class_name]['fields'][field.children[0].values[0]][1], None)
                         builder.store(nullPtr, fieldPtr)
 
 
@@ -665,25 +665,31 @@ class CodeGen():
 
 
     def compile_main(self, node):
-        scope = variableScope()
-        block = self.classes["Main"]["methods"]["main"][2].append_basic_block()
-        builder = ir.IRBuilder(block)
-        
-        main = builder.call(self.classes['Main']['new'], [])
-        args = self.classes["Main"]["methods"]["main"][2].args
-        ptr = builder.alloca(args[0].type)
-        builder.store(main, ptr)
+        for method in node.children:
+            if method.children[0].values[0] == "main":
+                scope = variableScope()
+                block = self.classes["Main"]["methods"]["main"][2].append_basic_block()
+                builder = ir.IRBuilder(block)
+                
+                main = builder.call(self.classes['Main']['new'], [])
+                args = self.classes["Main"]["methods"]["main"][2].args
+                ptr = builder.alloca(args[0].type)
+                builder.store(main, ptr)
 
-        scope.addVariable('self', ptr)
-        builder.ret(self.compile_tree(node.children[2], builder, scope))
+                scope.addVariable('Main', ptr)
+                builder.ret(self.compile_tree(method.children[2], builder, scope))
+            else:
+                self.compile_method(method)
 
 
     def compile_program(self, node):
+        
         for child in node.children:
             if child.values[0] == "Main":
-                self.compile_main(child.children[1].children[0])
+                self.compile_main(child.children[1])
             else:
-                self.compile_method(child.children[1].children[0])
+                for method in child.children[1].children:
+                    self.compile_method(method)
 
 
     def compile_extends(self, class_name):

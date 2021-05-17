@@ -140,7 +140,7 @@ class ClassChecker():
         return 
 
     def compute_line(self, p, index):
-        return p.lineno(index) - (self.string_text.count('\n'))
+        return p.lineno(index)
     
     def method_in_class(self, method_id, class_id):
         for method in self.methods_dict[class_id]:

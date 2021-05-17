@@ -466,45 +466,37 @@ skip_while:                             # @skip_while
 	.size	skip_while, .Lfunc_end10-skip_while
 	.cfi_endproc
                                         # -- End function
-	.section	.rodata.cst8,"aM",@progbits,8
-	.p2align	3                               # -- Begin function main
-.LCPI11_0:
-	.quad	0x4014000000000000              # double 5
-.LCPI11_1:
-	.quad	0x4000000000000000              # double 2
-	.text
-	.globl	main
+	.globl	main                            # -- Begin function main
 	.p2align	4, 0x90
 	.type	main,@function
 main:                                   # @main
 	.cfi_startproc
 # %bb.0:                                # %.3
-	pushq	%r14
-	.cfi_def_cfa_offset 16
-	pushq	%rbx
-	.cfi_def_cfa_offset 24
-	pushq	%rax
+	subq	$24, %rsp
 	.cfi_def_cfa_offset 32
-	.cfi_offset %rbx, -24
-	.cfi_offset %r14, -16
 	callq	Main___new
-	movq	%rax, %rbx
-	movq	%rax, (%rsp)
-	movq	(%rax), %rax
-	movq	16(%rax), %r14
-	movsd	.LCPI11_0(%rip), %xmm0          # xmm0 = mem[0],zero
-	movsd	.LCPI11_1(%rip), %xmm1          # xmm1 = mem[0],zero
-	callq	pow
-	cvttsd2si	%xmm0, %rsi
-	movq	%rbx, %rdi
-                                        # kill: def $esi killed $esi killed $rsi
-	callq	*%r14
+	movq	%rax, 8(%rsp)
+	movl	$0, 4(%rsp)
+	movl	$10, 20(%rsp)
 	xorl	%eax, %eax
-	addq	$8, %rsp
-	.cfi_def_cfa_offset 24
-	popq	%rbx
-	.cfi_def_cfa_offset 16
-	popq	%r14
+	testb	%al, %al
+	jne	.LBB11_2
+	.p2align	4, 0x90
+.LBB11_1:                               # %while_body
+                                        # =>This Inner Loop Header: Depth=1
+	movq	8(%rsp), %rdi
+	movq	(%rdi), %rax
+	movl	4(%rsp), %esi
+	callq	*16(%rax)
+	movq	(%rax), %rcx
+	movl	$string, %esi
+	movq	%rax, %rdi
+	callq	*(%rcx)
+	incl	4(%rsp)
+	jmp	.LBB11_1
+.LBB11_2:                               # %while_exit
+	xorl	%eax, %eax
+	addq	$24, %rsp
 	.cfi_def_cfa_offset 8
 	retq
 .Lfunc_end11:
@@ -645,5 +637,11 @@ Main_vtable:
 	.quad	Object__inputInt32
 	.quad	main
 	.size	Main_vtable, 56
+
+	.type	string,@object                  # @string
+	.globl	string
+string:
+	.asciz	"\n"
+	.size	string, 2
 
 	.section	".note.GNU-stack","",@progbits

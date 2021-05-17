@@ -385,17 +385,33 @@ define i32 @"main"(%"Main"* %".1")
   %".4" = call %"Main"* @"Main___new"()
   %".5" = alloca %"Main"*
   store %"Main"* %".4", %"Main"** %".5"
-  %".7" = load %"Main"*, %"Main"** %".5"
-  %".8" = getelementptr inbounds %"Main", %"Main"* %".7", i32 0, i32 0
-  %".9" = load %"MainVT"*, %"MainVT"** %".8"
-  %".10" = getelementptr inbounds %"MainVT", %"MainVT"* %".9", i32 0, i32 2
-  %".11" = load %"Object"* (%"Object"*, i32)*, %"Object"* (%"Object"*, i32)** %".10"
-  %".12" = uitofp i32 5 to double
-  %".13" = uitofp i32 2 to double
-  %".14" = call double @"pow"(double %".12", double %".13")
-  %".15" = fptoui double %".14" to i32
-  %".16" = bitcast %"Main"* %".7" to %"Object"*
-  %".17" = call %"Object"* %".11"(%"Object"* %".16", i32 %".15")
+  %".7" = alloca i32
+  store i32 0, i32* %".7"
+  %".9" = alloca i32
+  store i32 10, i32* %".9"
+  %".11" = load i32, i32* %".7"
+  %".12" = load i32, i32* %".9"
+  %".13" = icmp ult i32 %".11", %".12"
+  br i1 %".13", label %"while_body", label %"while_exit"
+while_body:
+while_exit:
+  %".15" = load %"Main"*, %"Main"** %".5"
+  %".16" = getelementptr inbounds %"Main", %"Main"* %".15", i32 0, i32 0
+  %".17" = load %"MainVT"*, %"MainVT"** %".16"
+  %".18" = getelementptr inbounds %"MainVT", %"MainVT"* %".17", i32 0, i32 2
+  %".19" = load %"Object"* (%"Object"*, i32)*, %"Object"* (%"Object"*, i32)** %".18"
+  %".20" = load i32, i32* %".7"
+  %".21" = bitcast %"Main"* %".15" to %"Object"*
+  %".22" = call %"Object"* %".19"(%"Object"* %".21", i32 %".20")
+  %".23" = getelementptr inbounds %"Object", %"Object"* %".22", i32 0, i32 0
+  %".24" = load %"ObjectVTable"*, %"ObjectVTable"** %".23"
+  %".25" = getelementptr inbounds %"ObjectVTable", %"ObjectVTable"* %".24", i32 0, i32 0
+  %".26" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".25"
+  %".27" = getelementptr inbounds [2 x i8], [2 x i8]* @"string", i32 0, i32 0
+  %".28" = call %"Object"* %".26"(%"Object"* %".22", i8* %".27")
+  %".29" = load i32, i32* %".7"
+  %".30" = add i32 %".29", 1
+  store i32 %".30", i32* %".7"
   ret i32 0
 }
 
@@ -426,4 +442,4 @@ define %"Main"* @"Main___init"(%"Main"* %".1")
 }
 
 @"Main_vtable" = constant %"MainVT" {%"Object"* (%"Object"*, i8*)* @"Object__print", %"Object"* (%"Object"*, i1)* @"Object__printBool", %"Object"* (%"Object"*, i32)* @"Object__printInt32", i8* (%"Object"*)* @"Object__inputLine", i1 (%"Object"*)* @"Object__inputBool", i32 (%"Object"*)* @"Object__inputInt32", i32 (%"Main"*)* @"main"}
-declare double @"pow"(double %".1", double %".2") 
+@"string" = constant [2 x i8] c"\0a\00"

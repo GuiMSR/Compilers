@@ -15,7 +15,7 @@ from collections import deque
 class VsopLexer():
 
     def __init__(self, file_name, string_text):
-        self.lexer = lex.lex(module=self)
+        self.lexer = lex.lex(module=self, errorlog=lex.NullLogger())
         self.file_name = file_name
         self.string_text = string_text
         self.tokens = []
@@ -29,6 +29,7 @@ class VsopLexer():
         # string literal variables
         self.double_quoteNB = 0
         self.string_pos = (0,0)
+        self.string_empty = True
 
     def __del__(self):
         pass
@@ -253,6 +254,7 @@ class VsopLexer():
     # Detecting string-literal with states
     def t_INITIAL_string(self,t):
         r'\"'
+        self.string_empty = True
         colno = self.find_column(self.string_text, t)
         self.double_quoteNB +=1
         self.string_pos = (t.lineno, colno)
@@ -265,6 +267,10 @@ class VsopLexer():
         self.string_pos = (t.lineno, colno)
         if(self.double_quoteNB%2==0):
             self.lexer.begin('INITIAL')
+        if self.string_empty is True:
+            t.type = "string_literal"
+            t.value = '""'
+            return t
         
     def t_STRING_string_literal(self,t):
         r'((?!\\|\").|(\\(b|t|n|r|\"|\\|x[0-9a-fA-F][0-9a-fA-F]|([ \t])*\n)))+'
@@ -283,6 +289,7 @@ class VsopLexer():
         t.value = t.value.replace('\\r', '\\x0d')
         t.value = t.value.replace('\\\\', '\\x5c')
         t.value = t.value.replace('\\"', '\\x22')
+        self.string_empty = False
         return t
     
 
@@ -310,7 +317,7 @@ class VsopLexer():
         t.type = "Lexicalerror"
         return t
 
-    t_STRING_ignore = ""
+    #t_STRING_ignore = ""
 
     def t_STRING_error(self,t):
         pass

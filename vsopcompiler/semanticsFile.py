@@ -404,7 +404,7 @@ class VsopParser2():
             sys.stderr.write("{0}:{1}:{2}: semantic error: cannot use class fields in field initializers\n".format(self.file_name, pos[0], pos[1]))
             sys.stderr.write("{0}:{1}:{2}: semantic error: use of unbound variable {3}\n".format(self.file_name, pos[0], pos[1], p[1]))
             sys.exit(1)
-        p[0] = st.Tree_node("assign", [st.Tree_node("object identifier", [], [p[1]], pos, self.current_class), p[3]], [], pos, self.current_class, p[3].type)
+        p[0] = st.Tree_node("assign", [st.Tree_node("object identifier", [], [p[1]], pos, self.current_class, t), p[3]], [], pos, self.current_class, p[3].type)
         self.add_variable(p[1], p[3].type)
 
     def p_unary_not(self, p):
@@ -436,7 +436,7 @@ class VsopParser2():
 
     def p_binary_equal(self, p):
         'expression : expression EQUAL expression'
-        if not self.compare_types(p[1].type, p[3].type):
+        if not self.unordered_compare_types(p[1].type, p[3].type):
             pos = p[3].position
             sys.stderr.write("{0}:{1}:{2}: semantic error: expected type {3} but found {4}\n".format(self.file_name, pos[0], pos[1], p[1].type, p[3].type))
             sys.exit(1)

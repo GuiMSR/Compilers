@@ -36,6 +36,7 @@ class CodeGen():
         self.fields_dict = dictionaries[0]
         self.formals_dict = dictionaries[3]
         self.pow = None
+        self.strcmp = None
         self.module = ir.Module(name="vsop")
         self.binding = binding
         self.binding.initialize()
@@ -247,10 +248,44 @@ class CodeGen():
         if node.values[0] != "=":
             return builder.icmp_unsigned(node.values[0], self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
         else:
-            return builder.icmp_unsigned("==", self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
+            if node.children[0].type == "unit":
+                #unit compared to unit is always true
+                return self.types["bool"](1)
+            if node.children[0].type == "bool" or node.children[0].type == "int32":
+                return builder.icmp_unsigned("==", self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
+            if node.children[0].type == "string":
+                if self.strcmp is None:
+                    strcmpType = ir.FunctionType(ir.IntType(32), [self.types["string"], self.types["string"]])
+                    self.strcmp = ir.Function(self.module, strcmpType, name="strcmp")
+                call = builder.call(self.strcmp, [self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope)])
+                return builder.icmp_unsigned('==', call, ir.IntType(32)(0))
+            else:
+                left_as_object = builder.bitcast(self.compile_tree(node.children[0], builder, scope), self.classes['Object']['pointer'])
+                right_as_object = builder.bitcast(self.compile_tree(node.children[1], builder, scope), self.classes['Object']['pointer'])
+                return builder.icmp_unsigned('==', left_as_object, right_as_object)
 
     def compile_and(self, node, builder, scope):
-        return builder.and_(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
+
+        addExit = builder.append_basic_block(name = "add_exit")
+        addCond = builder.append_basic_block(name = "add_cond")
+
+        # Allocate bool pointer
+        ptr = builder.alloca(self.types['bool'])
+
+        condLeft = self.compile_tree(node.children[0], builder, scope)
+        # Store first condition
+        builder.store(condLeft, ptr)
+        builder.cbranch(condLeft, addCond, addExit)
+        
+        builder.position_at_start(addCond)
+        condRight = self.compile_tree(node.children[1], builder, scope)
+        # Store second condition
+        builder.store(condRight, ptr)
+        builder.branch(addExit)
+        builder.position_at_start(addExit)
+
+        # Returns the value in ptr either left or right condition
+        return builder.load(ptr)
 
     def compile_binop(self, node, builder, scope):
 
@@ -287,11 +322,10 @@ class CodeGen():
         
 
     def compile_assign(self, node, builder, scope):
-        
         if node.type in self.types:
             returnType = self.types[node.type]
         else:
-            returnType = self.classes[node.type]['pointer']
+            returnType = self.classes[node.children[0].type]['pointer']
 
         val = self.compile_tree(node.children[1], builder, scope)
 
@@ -313,13 +347,11 @@ class CodeGen():
         return val 
 
     def compile_let(self, node, builder, scope):
-        
         # Get type of object identifier in let
         if node.children[0].type in self.types:
             returnType = self.types[node.children[0].type]
         else:
-            returnType = self.classes[node.type]['pointer']
-
+            returnType = self.classes[node.children[0].type]['pointer']
         ptr = builder.alloca(returnType)
 
         if len(node.children) == 2: 
@@ -512,10 +544,25 @@ class CodeGen():
         for method in self.classes[self.extends[class_name]]['methods'].keys():
             self.classes[class_name]['methods'][method] = self.classes[self.extends[class_name]]['methods'][method].copy()
 
-
         # Get field and method number in parent
         nbMethod = len(self.classes[class_name]['methods'])
         nbFields = len(self.classes[class_name]['fields']) + 1
+
+        # Set class fields in dictionary
+        for field in self.fields_dict[class_name]:
+            if field[1] in self.types:
+                fieldType = self.types[field[1]]
+            else:
+                fieldType = self.classes[field[1]]['pointer']
+            
+            classBody.append(fieldType)
+            self.classes[class_name]["fields"][field[0]] = [nbFields, fieldType]
+            nbFields += 1
+
+        classPointer.set_body(*classBody)
+
+        self.classes[class_name]['pointer'] = classPointer.as_pointer()
+
 
         # Set class methods inside dictionary and classVT body list
         for method in self.methods_dict[class_name]:
@@ -552,28 +599,13 @@ class CodeGen():
             classVTbody[method[1][0]] = method[1][1].as_pointer()
             classMethods[method[1][0]] =  method[1][2]
 
-            
-        # Set class fields in dictionary
-        for field in self.fields_dict[class_name]:
-            if field[1] in self.types:
-                fieldType = self.types[field[1]]
-            else:
-                fieldType = self.classes[field[1]]['pointer']
-            
-            classBody.append(fieldType)
-            self.classes[class_name]["fields"][field[0]] = [nbFields, fieldType]
-            nbFields += 1
         
 
-        # Set class VT body and class structure body
+        # Set class VT body
         classVT.set_body(*classVTbody)
-        classPointer.set_body(*classBody)
 
-
-        # Set structure and VT structure in dictionary
-        self.classes[class_name]['pointer'] = classPointer.as_pointer()
+        # Set VTable in dictionary
         self.classes[class_name]['VTable'] = classVT
-
 
         # New and Init functions
         newType = ir.FunctionType(classPointer.as_pointer(), [])
@@ -583,10 +615,10 @@ class CodeGen():
         initFct = ir.Function(self.module, initType, name=class_name+'___init')
         self.classes[class_name]['init'] = initFct
 
-
         # New initialization and block builder
         block = newFct.append_basic_block()
         builder = ir.IRBuilder(block)
+
 
         nullSize = ir.Constant(self.classes[class_name]['pointer'], None)
         sizePtr = builder.gep(nullSize, [self.types["int32"](1)], inbounds=False, name="size_ptr")
@@ -606,12 +638,12 @@ class CodeGen():
 
             # .super function from parent
             cast = builder.bitcast(arg, self.classes[self.extends[class_name]]['pointer'])
-            call = builder.call(self.classes[self.extends[class_name]]['init'], [cast])
+            builder.call(self.classes[self.extends[class_name]]['init'], [cast])
 
             # Vtable
             ptr = builder.gep(arg, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
             value = ir.Constant(self.classes[class_name]['VTable'], classMethods)
-            classVTable = ir.GlobalVariable(self.module, self.classes[class_name]['VTable'], name=class_name+'_vtable')
+            classVTable = ir.GlobalVariable(self.module, self.classes[class_name]['VTable'], name=class_name+'VT')
             classVTable.global_constant = True
             classVTable.initializer = value
             builder.store(classVTable, ptr)

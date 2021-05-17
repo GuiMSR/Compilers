@@ -377,201 +377,232 @@ define internal void @skip_while(i32 (i32)*) {
 
 
 
+%"List" = type {%"ListVT"*}
+%"ListVT" = type {%"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i1)*, %"Object"* (%"Object"*, i32)*, i8* (%"Object"*)*, i1 (%"Object"*)*, i32 (%"Object"*)*, i1 (%"List"*)*, i32 (%"List"*)*}
+%"Nil" = type {%"NilVT"*}
+%"NilVT" = type {%"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i1)*, %"Object"* (%"Object"*, i32)*, i8* (%"Object"*)*, i1 (%"Object"*)*, i32 (%"Object"*)*, i1 (%"List"*)*, i32 (%"List"*)*}
+%"Cons" = type {%"ConsVT"*, i32, %"List"*}
+%"ConsVT" = type {%"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i1)*, %"Object"* (%"Object"*, i32)*, i8* (%"Object"*)*, i1 (%"Object"*)*, i32 (%"Object"*)*, i1 (%"Cons"*)*, i32 (%"Cons"*)*, %"Cons"* (%"Cons"*, i32, %"List"*)*, i32 (%"Cons"*)*}
 %"Main" = type {%"MainVT"*}
 %"MainVT" = type {%"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i1)*, %"Object"* (%"Object"*, i32)*, i8* (%"Object"*)*, i1 (%"Object"*)*, i32 (%"Object"*)*, i32 (%"Main"*)*}
+define i1 @"List__isNil"(%"List"* %".1") 
+{
+.3:
+  %".4" = alloca %"List"*
+  store %"List"* %".1", %"List"** %".4"
+  ret i1 1
+}
+
+define i32 @"List__length"(%"List"* %".1") 
+{
+.3:
+  %".4" = alloca %"List"*
+  store %"List"* %".1", %"List"** %".4"
+  ret i32 0
+}
+
+define %"List"* @"List___new"() 
+{
+.2:
+  %"size_ptr" = getelementptr %"List", %"List"* null, i32 1
+  %"size_i64" = ptrtoint %"List"* %"size_ptr" to i64
+  %".3" = call i8* @"malloc"(i64 %"size_i64")
+  %".4" = bitcast i8* %".3" to %"List"*
+  %".5" = call %"List"* @"List___init"(%"List"* %".4")
+  ret %"List"* %".5"
+}
+
+define %"List"* @"List___init"(%"List"* %".1") 
+{
+.3:
+  %".4" = icmp ne %"List"* %".1", null
+  br i1 %".4", label %".3.if", label %".3.endif"
+.3.if:
+  %".6" = bitcast %"List"* %".1" to %"Object"*
+  %".7" = call %"Object"* @"Object___init"(%"Object"* %".6")
+  %".8" = getelementptr inbounds %"List", %"List"* %".1", i32 0, i32 0
+  store %"ListVT"* @"ListVT", %"ListVT"** %".8"
+  br label %".3.endif"
+.3.endif:
+  ret %"List"* %".1"
+}
+
+@"ListVT" = constant %"ListVT" {%"Object"* (%"Object"*, i8*)* @"Object__print", %"Object"* (%"Object"*, i1)* @"Object__printBool", %"Object"* (%"Object"*, i32)* @"Object__printInt32", i8* (%"Object"*)* @"Object__inputLine", i1 (%"Object"*)* @"Object__inputBool", i32 (%"Object"*)* @"Object__inputInt32", i1 (%"List"*)* @"List__isNil", i32 (%"List"*)* @"List__length"}
+define %"Nil"* @"Nil___new"() 
+{
+.2:
+  %"size_ptr" = getelementptr %"Nil", %"Nil"* null, i32 1
+  %"size_i64" = ptrtoint %"Nil"* %"size_ptr" to i64
+  %".3" = call i8* @"malloc"(i64 %"size_i64")
+  %".4" = bitcast i8* %".3" to %"Nil"*
+  %".5" = call %"Nil"* @"Nil___init"(%"Nil"* %".4")
+  ret %"Nil"* %".5"
+}
+
+define %"Nil"* @"Nil___init"(%"Nil"* %".1") 
+{
+.3:
+  %".4" = icmp ne %"Nil"* %".1", null
+  br i1 %".4", label %".3.if", label %".3.endif"
+.3.if:
+  %".6" = bitcast %"Nil"* %".1" to %"List"*
+  %".7" = call %"List"* @"List___init"(%"List"* %".6")
+  %".8" = getelementptr inbounds %"Nil", %"Nil"* %".1", i32 0, i32 0
+  store %"NilVT"* @"NilVT", %"NilVT"** %".8"
+  br label %".3.endif"
+.3.endif:
+  ret %"Nil"* %".1"
+}
+
+@"NilVT" = constant %"NilVT" {%"Object"* (%"Object"*, i8*)* @"Object__print", %"Object"* (%"Object"*, i1)* @"Object__printBool", %"Object"* (%"Object"*, i32)* @"Object__printInt32", i8* (%"Object"*)* @"Object__inputLine", i1 (%"Object"*)* @"Object__inputBool", i32 (%"Object"*)* @"Object__inputInt32", i1 (%"List"*)* @"List__isNil", i32 (%"List"*)* @"List__length"}
+define %"Cons"* @"Cons__init"(%"Cons"* %".1", i32 %".2", %"List"* %".3") 
+{
+.5:
+  %".6" = alloca %"Cons"*
+  store %"Cons"* %".1", %"Cons"** %".6"
+  %".8" = alloca i32
+  store i32 %".2", i32* %".8"
+  %".10" = alloca %"List"*
+  store %"List"* %".3", %"List"** %".10"
+  %".12" = load i32, i32* %".8"
+  %".13" = load %"Cons"*, %"Cons"** %".6"
+  %".14" = getelementptr inbounds %"Cons", %"Cons"* %".13", i32 0, i32 1
+  store i32 %".12", i32* %".14"
+  %".16" = load %"List"*, %"List"** %".10"
+  %".17" = load %"Cons"*, %"Cons"** %".6"
+  %".18" = getelementptr inbounds %"Cons", %"Cons"* %".17", i32 0, i32 2
+  store %"List"* %".16", %"List"** %".18"
+  %".20" = load %"Cons"*, %"Cons"** %".6"
+  ret %"Cons"* %".20"
+}
+
+define i32 @"Cons__head"(%"Cons"* %".1") 
+{
+.3:
+  %".4" = alloca %"Cons"*
+  store %"Cons"* %".1", %"Cons"** %".4"
+  %".6" = load %"Cons"*, %"Cons"** %".4"
+  %".7" = getelementptr inbounds %"Cons", %"Cons"* %".6", i32 0, i32 1
+  %".8" = load i32, i32* %".7"
+  ret i32 %".8"
+}
+
+define i1 @"Cons__isNil"(%"Cons"* %".1") 
+{
+.3:
+  %".4" = alloca %"Cons"*
+  store %"Cons"* %".1", %"Cons"** %".4"
+  ret i1 0
+}
+
+define i32 @"Cons__length"(%"Cons"* %".1") 
+{
+.3:
+  %".4" = alloca %"Cons"*
+  store %"Cons"* %".1", %"Cons"** %".4"
+  %".6" = load %"Cons"*, %"Cons"** %".4"
+  %".7" = getelementptr inbounds %"Cons", %"Cons"* %".6", i32 0, i32 2
+  %".8" = load %"List"*, %"List"** %".7"
+  %".9" = getelementptr inbounds %"List", %"List"* %".8", i32 0, i32 0
+  %".10" = load %"ListVT"*, %"ListVT"** %".9"
+  %".11" = getelementptr inbounds %"ListVT", %"ListVT"* %".10", i32 0, i32 7
+  %".12" = load i32 (%"List"*)*, i32 (%"List"*)** %".11"
+  %".13" = call i32 %".12"(%"List"* %".8")
+  %".14" = add i32 1, %".13"
+  ret i32 %".14"
+}
+
+define %"Cons"* @"Cons___new"() 
+{
+.2:
+  %"size_ptr" = getelementptr %"Cons", %"Cons"* null, i32 1
+  %"size_i64" = ptrtoint %"Cons"* %"size_ptr" to i64
+  %".3" = call i8* @"malloc"(i64 %"size_i64")
+  %".4" = bitcast i8* %".3" to %"Cons"*
+  %".5" = call %"Cons"* @"Cons___init"(%"Cons"* %".4")
+  ret %"Cons"* %".5"
+}
+
+define %"Cons"* @"Cons___init"(%"Cons"* %".1") 
+{
+.3:
+  %".4" = icmp ne %"Cons"* %".1", null
+  br i1 %".4", label %".3.if", label %".3.endif"
+.3.if:
+  %".6" = bitcast %"Cons"* %".1" to %"List"*
+  %".7" = call %"List"* @"List___init"(%"List"* %".6")
+  %".8" = getelementptr inbounds %"Cons", %"Cons"* %".1", i32 0, i32 0
+  store %"ConsVT"* @"ConsVT", %"ConsVT"** %".8"
+  %".10" = getelementptr %"Cons", %"Cons"* %".1", i32 0, i32 1
+  store i32 0, i32* %".10"
+  %".12" = getelementptr %"Cons", %"Cons"* %".1", i32 0, i32 2
+  store %"List"* null, %"List"** %".12"
+  br label %".3.endif"
+.3.endif:
+  ret %"Cons"* %".1"
+}
+
+@"ConsVT" = constant %"ConsVT" {%"Object"* (%"Object"*, i8*)* @"Object__print", %"Object"* (%"Object"*, i1)* @"Object__printBool", %"Object"* (%"Object"*, i32)* @"Object__printInt32", i8* (%"Object"*)* @"Object__inputLine", i1 (%"Object"*)* @"Object__inputBool", i32 (%"Object"*)* @"Object__inputInt32", i1 (%"Cons"*)* @"Cons__isNil", i32 (%"Cons"*)* @"Cons__length", %"Cons"* (%"Cons"*, i32, %"List"*)* @"Cons__init", i32 (%"Cons"*)* @"Cons__head"}
 define i32 @"main"(%"Main"* %".1") 
 {
 .3:
   %".4" = call %"Main"* @"Main___new"()
   %".5" = alloca %"Main"*
   store %"Main"* %".4", %"Main"** %".5"
-  %".7" = alloca %"Object"*
-  %".8" = load %"Main"*, %"Main"** %".5"
-  %".9" = bitcast %"Main"* %".8" to %"Object"*
-  %".10" = load %"Main"*, %"Main"** %".5"
-  %".11" = bitcast %"Main"* %".10" to %"Object"*
-  %".12" = icmp eq %"Object"* %".9", %".11"
-  br i1 %".12", label %".3.if", label %".3.else"
-.3.if:
-  %".14" = load %"Main"*, %"Main"** %".5"
-  %".15" = getelementptr inbounds %"Main", %"Main"* %".14", i32 0, i32 0
-  %".16" = load %"MainVT"*, %"MainVT"** %".15"
-  %".17" = getelementptr inbounds %"MainVT", %"MainVT"* %".16", i32 0, i32 0
-  %".18" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".17"
-  %".19" = getelementptr inbounds [4 x i8], [4 x i8]* @"string", i32 0, i32 0
-  %".20" = bitcast %"Main"* %".14" to %"Object"*
-  %".21" = call %"Object"* %".18"(%"Object"* %".20", i8* %".19")
-  store %"Object"* %".21", %"Object"** %".7"
-  br label %".3.endif"
-.3.else:
-  %".24" = load %"Main"*, %"Main"** %".5"
-  %".25" = getelementptr inbounds %"Main", %"Main"* %".24", i32 0, i32 0
-  %".26" = load %"MainVT"*, %"MainVT"** %".25"
-  %".27" = getelementptr inbounds %"MainVT", %"MainVT"* %".26", i32 0, i32 0
-  %".28" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".27"
-  %".29" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.1", i32 0, i32 0
-  %".30" = bitcast %"Main"* %".24" to %"Object"*
-  %".31" = call %"Object"* %".28"(%"Object"* %".30", i8* %".29")
-  store %"Object"* %".31", %"Object"** %".7"
-  br label %".3.endif"
-.3.endif:
-  %".34" = load %"Object"*, %"Object"** %".7"
-  %".35" = alloca %"Object"*
-  %".36" = load %"Main"*, %"Main"** %".5"
-  %".37" = bitcast %"Main"* %".36" to %"Object"*
-  %".38" = call %"Main"* @"Main___new"()
-  %".39" = bitcast %"Main"* %".38" to %"Object"*
-  %".40" = icmp eq %"Object"* %".37", %".39"
-  br i1 %".40", label %".3.endif.if", label %".3.endif.else"
-.3.endif.if:
-  %".42" = load %"Main"*, %"Main"** %".5"
-  %".43" = getelementptr inbounds %"Main", %"Main"* %".42", i32 0, i32 0
-  %".44" = load %"MainVT"*, %"MainVT"** %".43"
-  %".45" = getelementptr inbounds %"MainVT", %"MainVT"* %".44", i32 0, i32 0
-  %".46" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".45"
-  %".47" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.2", i32 0, i32 0
-  %".48" = bitcast %"Main"* %".42" to %"Object"*
-  %".49" = call %"Object"* %".46"(%"Object"* %".48", i8* %".47")
-  store %"Object"* %".49", %"Object"** %".35"
-  br label %".3.endif.endif"
-.3.endif.else:
-  %".52" = load %"Main"*, %"Main"** %".5"
-  %".53" = getelementptr inbounds %"Main", %"Main"* %".52", i32 0, i32 0
-  %".54" = load %"MainVT"*, %"MainVT"** %".53"
-  %".55" = getelementptr inbounds %"MainVT", %"MainVT"* %".54", i32 0, i32 0
-  %".56" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".55"
-  %".57" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.3", i32 0, i32 0
-  %".58" = bitcast %"Main"* %".52" to %"Object"*
-  %".59" = call %"Object"* %".56"(%"Object"* %".58", i8* %".57")
-  store %"Object"* %".59", %"Object"** %".35"
-  br label %".3.endif.endif"
-.3.endif.endif:
-  %".62" = load %"Object"*, %"Object"** %".35"
-  %".63" = alloca %"Object"*
-  store %"Object"* null, %"Object"** %".63"
-  %".65" = alloca %"Object"*
-  %".66" = load %"Object"*, %"Object"** %".63"
-  %".67" = load %"Main"*, %"Main"** %".5"
-  %".68" = bitcast %"Main"* %".67" to %"Object"*
-  %".69" = icmp eq %"Object"* %".66", %".68"
-  br i1 %".69", label %".3.endif.endif.if", label %".3.endif.endif.else"
-.3.endif.endif.if:
-  %".71" = load %"Main"*, %"Main"** %".5"
-  %".72" = getelementptr inbounds %"Main", %"Main"* %".71", i32 0, i32 0
-  %".73" = load %"MainVT"*, %"MainVT"** %".72"
-  %".74" = getelementptr inbounds %"MainVT", %"MainVT"* %".73", i32 0, i32 0
-  %".75" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".74"
-  %".76" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.4", i32 0, i32 0
-  %".77" = bitcast %"Main"* %".71" to %"Object"*
-  %".78" = call %"Object"* %".75"(%"Object"* %".77", i8* %".76")
-  store %"Object"* %".78", %"Object"** %".65"
-  br label %".3.endif.endif.endif"
-.3.endif.endif.else:
-  %".81" = load %"Main"*, %"Main"** %".5"
-  %".82" = getelementptr inbounds %"Main", %"Main"* %".81", i32 0, i32 0
-  %".83" = load %"MainVT"*, %"MainVT"** %".82"
-  %".84" = getelementptr inbounds %"MainVT", %"MainVT"* %".83", i32 0, i32 0
-  %".85" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".84"
-  %".86" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.5", i32 0, i32 0
-  %".87" = bitcast %"Main"* %".81" to %"Object"*
-  %".88" = call %"Object"* %".85"(%"Object"* %".87", i8* %".86")
-  store %"Object"* %".88", %"Object"** %".65"
-  br label %".3.endif.endif.endif"
-.3.endif.endif.endif:
-  %".91" = load %"Object"*, %"Object"** %".65"
-  %".92" = alloca %"Object"*
-  %".93" = load %"Main"*, %"Main"** %".5"
-  %".94" = bitcast %"Main"* %".93" to %"Object"*
-  %".95" = load %"Object"*, %"Object"** %".63"
-  %".96" = icmp eq %"Object"* %".94", %".95"
-  br i1 %".96", label %".3.endif.endif.endif.if", label %".3.endif.endif.endif.else"
-.3.endif.endif.endif.if:
-  %".98" = load %"Main"*, %"Main"** %".5"
-  %".99" = getelementptr inbounds %"Main", %"Main"* %".98", i32 0, i32 0
-  %".100" = load %"MainVT"*, %"MainVT"** %".99"
-  %".101" = getelementptr inbounds %"MainVT", %"MainVT"* %".100", i32 0, i32 0
-  %".102" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".101"
-  %".103" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.6", i32 0, i32 0
-  %".104" = bitcast %"Main"* %".98" to %"Object"*
-  %".105" = call %"Object"* %".102"(%"Object"* %".104", i8* %".103")
-  store %"Object"* %".105", %"Object"** %".92"
-  br label %".3.endif.endif.endif.endif"
-.3.endif.endif.endif.else:
-  %".108" = load %"Main"*, %"Main"** %".5"
-  %".109" = getelementptr inbounds %"Main", %"Main"* %".108", i32 0, i32 0
-  %".110" = load %"MainVT"*, %"MainVT"** %".109"
-  %".111" = getelementptr inbounds %"MainVT", %"MainVT"* %".110", i32 0, i32 0
-  %".112" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".111"
-  %".113" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.7", i32 0, i32 0
-  %".114" = bitcast %"Main"* %".108" to %"Object"*
-  %".115" = call %"Object"* %".112"(%"Object"* %".114", i8* %".113")
-  store %"Object"* %".115", %"Object"** %".92"
-  br label %".3.endif.endif.endif.endif"
-.3.endif.endif.endif.endif:
-  %".118" = load %"Object"*, %"Object"** %".92"
-  %".119" = load %"Main"*, %"Main"** %".5"
-  %".120" = bitcast %"Main"* %".119" to %"Object"*
-  store %"Object"* %".120", %"Object"** %".63"
-  %".122" = alloca %"Object"*
-  %".123" = load %"Object"*, %"Object"** %".63"
-  %".124" = load %"Main"*, %"Main"** %".5"
-  %".125" = bitcast %"Main"* %".124" to %"Object"*
-  %".126" = icmp eq %"Object"* %".123", %".125"
-  br i1 %".126", label %".3.endif.endif.endif.endif.if", label %".3.endif.endif.endif.endif.else"
-.3.endif.endif.endif.endif.if:
-  %".128" = load %"Main"*, %"Main"** %".5"
-  %".129" = getelementptr inbounds %"Main", %"Main"* %".128", i32 0, i32 0
-  %".130" = load %"MainVT"*, %"MainVT"** %".129"
-  %".131" = getelementptr inbounds %"MainVT", %"MainVT"* %".130", i32 0, i32 0
-  %".132" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".131"
-  %".133" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.8", i32 0, i32 0
-  %".134" = bitcast %"Main"* %".128" to %"Object"*
-  %".135" = call %"Object"* %".132"(%"Object"* %".134", i8* %".133")
-  store %"Object"* %".135", %"Object"** %".122"
-  br label %".3.endif.endif.endif.endif.endif"
-.3.endif.endif.endif.endif.else:
-  %".138" = load %"Main"*, %"Main"** %".5"
-  %".139" = getelementptr inbounds %"Main", %"Main"* %".138", i32 0, i32 0
-  %".140" = load %"MainVT"*, %"MainVT"** %".139"
-  %".141" = getelementptr inbounds %"MainVT", %"MainVT"* %".140", i32 0, i32 0
-  %".142" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".141"
-  %".143" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.9", i32 0, i32 0
-  %".144" = bitcast %"Main"* %".138" to %"Object"*
-  %".145" = call %"Object"* %".142"(%"Object"* %".144", i8* %".143")
-  store %"Object"* %".145", %"Object"** %".122"
-  br label %".3.endif.endif.endif.endif.endif"
-.3.endif.endif.endif.endif.endif:
-  %".148" = load %"Object"*, %"Object"** %".122"
-  %".149" = alloca %"Object"*
-  %".150" = load %"Main"*, %"Main"** %".5"
-  %".151" = bitcast %"Main"* %".150" to %"Object"*
-  %".152" = load %"Object"*, %"Object"** %".63"
-  %".153" = icmp eq %"Object"* %".151", %".152"
-  br i1 %".153", label %".3.endif.endif.endif.endif.endif.if", label %".3.endif.endif.endif.endif.endif.else"
-.3.endif.endif.endif.endif.endif.if:
-  %".155" = load %"Main"*, %"Main"** %".5"
-  %".156" = getelementptr inbounds %"Main", %"Main"* %".155", i32 0, i32 0
-  %".157" = load %"MainVT"*, %"MainVT"** %".156"
-  %".158" = getelementptr inbounds %"MainVT", %"MainVT"* %".157", i32 0, i32 0
-  %".159" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".158"
-  %".160" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.10", i32 0, i32 0
-  %".161" = bitcast %"Main"* %".155" to %"Object"*
-  %".162" = call %"Object"* %".159"(%"Object"* %".161", i8* %".160")
-  store %"Object"* %".162", %"Object"** %".149"
-  br label %".3.endif.endif.endif.endif.endif.endif"
-.3.endif.endif.endif.endif.endif.else:
-  %".165" = load %"Main"*, %"Main"** %".5"
-  %".166" = getelementptr inbounds %"Main", %"Main"* %".165", i32 0, i32 0
-  %".167" = load %"MainVT"*, %"MainVT"** %".166"
-  %".168" = getelementptr inbounds %"MainVT", %"MainVT"* %".167", i32 0, i32 0
-  %".169" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".168"
-  %".170" = getelementptr inbounds [4 x i8], [4 x i8]* @"string.11", i32 0, i32 0
-  %".171" = bitcast %"Main"* %".165" to %"Object"*
-  %".172" = call %"Object"* %".169"(%"Object"* %".171", i8* %".170")
-  store %"Object"* %".172", %"Object"** %".149"
-  br label %".3.endif.endif.endif.endif.endif.endif"
-.3.endif.endif.endif.endif.endif.endif:
-  %".175" = load %"Object"*, %"Object"** %".149"
+  %".7" = alloca %"List"*
+  %".8" = call %"Cons"* @"Cons___new"()
+  %".9" = getelementptr inbounds %"Cons", %"Cons"* %".8", i32 0, i32 0
+  %".10" = load %"ConsVT"*, %"ConsVT"** %".9"
+  %".11" = getelementptr inbounds %"ConsVT", %"ConsVT"* %".10", i32 0, i32 8
+  %".12" = load %"Cons"* (%"Cons"*, i32, %"List"*)*, %"Cons"* (%"Cons"*, i32, %"List"*)** %".11"
+  %".13" = call %"Cons"* @"Cons___new"()
+  %".14" = getelementptr inbounds %"Cons", %"Cons"* %".13", i32 0, i32 0
+  %".15" = load %"ConsVT"*, %"ConsVT"** %".14"
+  %".16" = getelementptr inbounds %"ConsVT", %"ConsVT"* %".15", i32 0, i32 8
+  %".17" = load %"Cons"* (%"Cons"*, i32, %"List"*)*, %"Cons"* (%"Cons"*, i32, %"List"*)** %".16"
+  %".18" = call %"Cons"* @"Cons___new"()
+  %".19" = getelementptr inbounds %"Cons", %"Cons"* %".18", i32 0, i32 0
+  %".20" = load %"ConsVT"*, %"ConsVT"** %".19"
+  %".21" = getelementptr inbounds %"ConsVT", %"ConsVT"* %".20", i32 0, i32 8
+  %".22" = load %"Cons"* (%"Cons"*, i32, %"List"*)*, %"Cons"* (%"Cons"*, i32, %"List"*)** %".21"
+  %".23" = call %"Nil"* @"Nil___new"()
+  %".24" = bitcast %"Nil"* %".23" to %"List"*
+  %".25" = call %"Cons"* %".22"(%"Cons"* %".18", i32 2, %"List"* %".24")
+  %".26" = bitcast %"Cons"* %".25" to %"List"*
+  %".27" = call %"Cons"* %".17"(%"Cons"* %".13", i32 1, %"List"* %".26")
+  %".28" = bitcast %"Cons"* %".27" to %"List"*
+  %".29" = call %"Cons"* %".12"(%"Cons"* %".8", i32 0, %"List"* %".28")
+  %".30" = bitcast %"Cons"* %".29" to %"List"*
+  store %"List"* %".30", %"List"** %".7"
+  %".32" = load %"Main"*, %"Main"** %".5"
+  %".33" = getelementptr inbounds %"Main", %"Main"* %".32", i32 0, i32 0
+  %".34" = load %"MainVT"*, %"MainVT"** %".33"
+  %".35" = getelementptr inbounds %"MainVT", %"MainVT"* %".34", i32 0, i32 0
+  %".36" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".35"
+  %".37" = getelementptr inbounds [17 x i8], [17 x i8]* @"string", i32 0, i32 0
+  %".38" = bitcast %"Main"* %".32" to %"Object"*
+  %".39" = call %"Object"* %".36"(%"Object"* %".38", i8* %".37")
+  %".40" = load %"Main"*, %"Main"** %".5"
+  %".41" = getelementptr inbounds %"Main", %"Main"* %".40", i32 0, i32 0
+  %".42" = load %"MainVT"*, %"MainVT"** %".41"
+  %".43" = getelementptr inbounds %"MainVT", %"MainVT"* %".42", i32 0, i32 2
+  %".44" = load %"Object"* (%"Object"*, i32)*, %"Object"* (%"Object"*, i32)** %".43"
+  %".45" = load %"List"*, %"List"** %".7"
+  %".46" = getelementptr inbounds %"List", %"List"* %".45", i32 0, i32 0
+  %".47" = load %"ListVT"*, %"ListVT"** %".46"
+  %".48" = getelementptr inbounds %"ListVT", %"ListVT"* %".47", i32 0, i32 7
+  %".49" = load i32 (%"List"*)*, i32 (%"List"*)** %".48"
+  %".50" = call i32 %".49"(%"List"* %".45")
+  %".51" = bitcast %"Main"* %".40" to %"Object"*
+  %".52" = call %"Object"* %".44"(%"Object"* %".51", i32 %".50")
+  %".53" = load %"Main"*, %"Main"** %".5"
+  %".54" = getelementptr inbounds %"Main", %"Main"* %".53", i32 0, i32 0
+  %".55" = load %"MainVT"*, %"MainVT"** %".54"
+  %".56" = getelementptr inbounds %"MainVT", %"MainVT"* %".55", i32 0, i32 0
+  %".57" = load %"Object"* (%"Object"*, i8*)*, %"Object"* (%"Object"*, i8*)** %".56"
+  %".58" = getelementptr inbounds [2 x i8], [2 x i8]* @"string.1", i32 0, i32 0
+  %".59" = bitcast %"Main"* %".53" to %"Object"*
+  %".60" = call %"Object"* %".57"(%"Object"* %".59", i8* %".58")
   ret i32 0
 }
 
@@ -595,22 +626,12 @@ define %"Main"* @"Main___init"(%"Main"* %".1")
   %".6" = bitcast %"Main"* %".1" to %"Object"*
   %".7" = call %"Object"* @"Object___init"(%"Object"* %".6")
   %".8" = getelementptr inbounds %"Main", %"Main"* %".1", i32 0, i32 0
-  store %"MainVT"* @"Main_vtable", %"MainVT"** %".8"
+  store %"MainVT"* @"MainVT", %"MainVT"** %".8"
   br label %".3.endif"
 .3.endif:
   ret %"Main"* %".1"
 }
 
-@"Main_vtable" = constant %"MainVT" {%"Object"* (%"Object"*, i8*)* @"Object__print", %"Object"* (%"Object"*, i1)* @"Object__printBool", %"Object"* (%"Object"*, i32)* @"Object__printInt32", i8* (%"Object"*)* @"Object__inputLine", i1 (%"Object"*)* @"Object__inputBool", i32 (%"Object"*)* @"Object__inputInt32", i32 (%"Main"*)* @"main"}
-@"string" = constant [4 x i8] c"OK\0a\00"
-@"string.1" = constant [4 x i8] c"KO\0a\00"
-@"string.2" = constant [4 x i8] c"KO\0a\00"
-@"string.3" = constant [4 x i8] c"OK\0a\00"
-@"string.4" = constant [4 x i8] c"KO\0a\00"
-@"string.5" = constant [4 x i8] c"OK\0a\00"
-@"string.6" = constant [4 x i8] c"KO\0a\00"
-@"string.7" = constant [4 x i8] c"OK\0a\00"
-@"string.8" = constant [4 x i8] c"OK\0a\00"
-@"string.9" = constant [4 x i8] c"KO\0a\00"
-@"string.10" = constant [4 x i8] c"OK\0a\00"
-@"string.11" = constant [4 x i8] c"KO\0a\00"
+@"MainVT" = constant %"MainVT" {%"Object"* (%"Object"*, i8*)* @"Object__print", %"Object"* (%"Object"*, i1)* @"Object__printBool", %"Object"* (%"Object"*, i32)* @"Object__printInt32", i8* (%"Object"*)* @"Object__inputLine", i1 (%"Object"*)* @"Object__inputBool", i32 (%"Object"*)* @"Object__inputInt32", i32 (%"Main"*)* @"main"}
+@"string" = constant [17 x i8] c"List has length \00"
+@"string.1" = constant [2 x i8] c"\0a\00"

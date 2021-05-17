@@ -429,5 +429,5 @@ class VsopParser():
     # Returns tuple with line and column positions 
     def find_position(self, p, i):
         colno = p.lexpos(i) - self.string_text.rfind('\n', 0, p.lexpos(i))
-        lineno = 1 if p.lineno(i) == 0 else p.lineno(i) - self.string_text.count('\n')
+        lineno = 1 if p.lineno(i) == 0 else p.lineno(i)
         return (lineno, colno)

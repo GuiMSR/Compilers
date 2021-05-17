@@ -250,7 +250,27 @@ class CodeGen():
             return builder.icmp_unsigned("==", self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
 
     def compile_and(self, node, builder, scope):
-        return builder.and_(self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
+
+        addExit = builder.append_basic_block(name = "add_exit")
+        addCond = builder.append_basic_block(name = "add_cond")
+
+        # Allocate bool pointer
+        ptr = builder.alloca(self.types['bool'])
+
+        condLeft = self.compile_tree(node.children[0], builder, scope)
+        # Store first condition
+        builder.store(condLeft, ptr)
+        builder.cbranch(condLeft, addCond, addExit)
+        
+        builder.position_at_start(addCond)
+        condRight = self.compile_tree(node.children[1], builder, scope)
+        # Store second condition
+        builder.store(condRight, ptr)
+        builder.branch(addExit)
+        builder.position_at_start(addExit)
+
+        # Returns the value in ptr either left or right condition
+        return builder.load(ptr)
 
     def compile_binop(self, node, builder, scope):
 
@@ -279,9 +299,9 @@ class CodeGen():
 
     def compile_unop(self, node, builder, scope):
         switcher = {
-            "not" : self.compile_not(node, builder, scope),
-            "-": self.compile_minus(node, builder, scope),
-            "isnull": self.compile_isnull(node, builder, scope)
+            "not" : self.compile_not,
+            "-": self.compile_minus,
+            "isnull": self.compile_isnull
             }
         return switcher[node.values[0]](node, builder, scope)
         
@@ -363,32 +383,25 @@ class CodeGen():
 
     def compile_while(self, node, builder, scope):
 
-        #whileCond = builder.function.append_basic_block(name='while_cond')
-        whileBod = builder.function.append_basic_block(name='while_body')
-        whileExit = builder.function.append_basic_block(name='while_exit')
-
-        # Block for condition
-        #builder.branch(whileCond)
-        #builder.position_at_end(whileCond)
+        whileBod = builder.append_basic_block(name='while_body')
+        whileExit = builder.append_basic_block(name='while_exit')
 
         # Branch to right block
-        cond = self.compile_tree(node.children[0], builder, scope)
-        builder.cbranch(cond, whileBod, whileExit)
-        builder.position_at_start(whileExit)
-
+        cond_head = self.compile_tree(node.children[0], builder, scope)
+        builder.cbranch(cond_head, whileBod, whileExit)
         # Block for block entry
-        self.compile_tree(node.children[1], builder, scope)
         builder.position_at_start(whileBod)
-
+        self.compile_tree(node.children[1], builder, scope)
+        cond_body = self.compile_tree(node.children[0], builder, scope)
+        builder.cbranch(cond_body, whileBod, whileExit)
         # Block for end of while (no need to branch)
-        builder.position_at_end(whileExit)
+        builder.position_at_start(whileExit)
         
         return self.types['unit']
 
     def compile_if(self, node, builder, scope):
-
+        # If else
         if len(node.children) == 3:
-
             if node.type in self.types:
                 ifType = self.types[node.type]
             else:
@@ -409,6 +422,7 @@ class CodeGen():
                     builder.store(cast, ptr)
             return builder.load(ptr)
 
+        # If then
         else:
             with builder.if_then(self.compile_tree(node.children[0], builder, scope)):
                 i = self.compile_tree(node.chilren[1], builder, scope)

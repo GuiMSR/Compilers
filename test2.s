@@ -472,32 +472,104 @@ skip_while:                             # @skip_while
 main:                                   # @main
 	.cfi_startproc
 # %bb.0:                                # %.3
-	subq	$24, %rsp
-	.cfi_def_cfa_offset 32
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbp, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register %rbp
+	pushq	%r14
+	pushq	%rbx
+	subq	$32, %rsp
+	.cfi_offset %rbx, -32
+	.cfi_offset %r14, -24
 	callq	Main___new
-	movq	%rax, 8(%rsp)
-	movl	$0, 4(%rsp)
-	movl	$10, 20(%rsp)
-	xorl	%eax, %eax
-	testb	%al, %al
-	jne	.LBB11_2
-	.p2align	4, 0x90
-.LBB11_1:                               # %while_body
-                                        # =>This Inner Loop Header: Depth=1
-	movq	8(%rsp), %rdi
-	movq	(%rdi), %rax
-	movl	4(%rsp), %esi
-	callq	*16(%rax)
+	movq	%rax, -32(%rbp)
 	movq	(%rax), %rcx
 	movl	$string, %esi
 	movq	%rax, %rdi
 	callq	*(%rcx)
-	incl	4(%rsp)
-	jmp	.LBB11_1
-.LBB11_2:                               # %while_exit
+	movb	$1, -17(%rbp)
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.1, %esi
+	callq	*(%rax)
+	movb	$1, -17(%rbp)
 	xorl	%eax, %eax
-	addq	$24, %rsp
-	.cfi_def_cfa_offset 8
+	testb	%al, %al
+	jne	.LBB11_2
+# %bb.1:                                # %add_exit.if
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.2, %esi
+	jmp	.LBB11_3
+.LBB11_2:                               # %add_exit.else
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.3, %esi
+.LBB11_3:                               # %add_exit.endif
+	callq	*(%rax)
+	movq	%rax, -40(%rbp)
+	movq	%rsp, %r14
+	addq	$-16, %r14
+	movq	%r14, %rsp
+	movq	%rsp, %rbx
+	leaq	-16(%rbx), %rsp
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.4, %esi
+	callq	*(%rax)
+	movb	$1, -16(%rbx)
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.5, %esi
+	callq	*(%rax)
+	movb	$0, -16(%rbx)
+	movb	$1, %al
+	testb	%al, %al
+	jne	.LBB11_5
+# %bb.4:                                # %add_exit.1.if
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.6, %esi
+	jmp	.LBB11_6
+.LBB11_5:                               # %add_exit.1.else
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.7, %esi
+.LBB11_6:                               # %add_exit.1.endif
+	callq	*(%rax)
+	movq	%rax, (%r14)
+	movq	%rsp, %r14
+	addq	$-16, %r14
+	movq	%r14, %rsp
+	movq	%rsp, %rbx
+	leaq	-16(%rbx), %rsp
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.8, %esi
+	callq	*(%rax)
+	movb	$0, -16(%rbx)
+	movb	$1, %al
+	testb	%al, %al
+	jne	.LBB11_8
+# %bb.7:                                # %add_exit.2.if
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.10, %esi
+	jmp	.LBB11_9
+.LBB11_8:                               # %add_exit.2.else
+	movq	-32(%rbp), %rdi
+	movq	(%rdi), %rax
+	movl	$string.11, %esi
+.LBB11_9:                               # %add_exit.2.endif
+	callq	*(%rax)
+	movq	%rax, (%r14)
+	xorl	%eax, %eax
+	leaq	-16(%rbp), %rsp
+	popq	%rbx
+	popq	%r14
+	popq	%rbp
+	.cfi_def_cfa %rsp, 8
 	retq
 .Lfunc_end11:
 	.size	main, .Lfunc_end11-main
@@ -641,7 +713,73 @@ Main_vtable:
 	.type	string,@object                  # @string
 	.globl	string
 string:
-	.asciz	"\n"
-	.size	string, 2
+	.asciz	"OK\n"
+	.size	string, 4
+
+	.type	string.1,@object                # @string.1
+	.globl	string.1
+string.1:
+	.asciz	"OK\n"
+	.size	string.1, 4
+
+	.type	string.2,@object                # @string.2
+	.globl	string.2
+string.2:
+	.asciz	"OK\n"
+	.size	string.2, 4
+
+	.type	string.3,@object                # @string.3
+	.globl	string.3
+string.3:
+	.asciz	"KO\n"
+	.size	string.3, 4
+
+	.type	string.4,@object                # @string.4
+	.globl	string.4
+string.4:
+	.asciz	"OK\n"
+	.size	string.4, 4
+
+	.type	string.5,@object                # @string.5
+	.globl	string.5
+string.5:
+	.asciz	"OK\n"
+	.size	string.5, 4
+
+	.type	string.6,@object                # @string.6
+	.globl	string.6
+string.6:
+	.asciz	"KO\n"
+	.size	string.6, 4
+
+	.type	string.7,@object                # @string.7
+	.globl	string.7
+string.7:
+	.asciz	"OK\n"
+	.size	string.7, 4
+
+	.type	string.8,@object                # @string.8
+	.globl	string.8
+string.8:
+	.asciz	"OK\n"
+	.size	string.8, 4
+
+	.type	string.9,@object                # @string.9
+	.globl	string.9
+string.9:
+	.asciz	"KO\n"
+	.size	string.9, 4
+
+	.type	string.10,@object               # @string.10
+	.globl	string.10
+string.10:
+	.asciz	"KO\n"
+	.size	string.10, 4
+
+	.type	string.11,@object               # @string.11
+	.globl	string.11
+string.11:
+	.asciz	"OK\n"
+	.size	string.11, 4
 
 	.section	".note.GNU-stack","",@progbits

@@ -279,9 +279,9 @@ class CodeGen():
 
     def compile_unop(self, node, builder, scope):
         switcher = {
-            "not" : self.compile_not(node, builder, scope),
-            "-": self.compile_minus(node, builder, scope),
-            "isnull": self.compile_isnull(node, builder, scope)
+            "not" : self.compile_not,
+            "-": self.compile_minus,
+            "isnull": self.compile_isnull
             }
         return switcher[node.values[0]](node, builder, scope)
         
@@ -363,32 +363,25 @@ class CodeGen():
 
     def compile_while(self, node, builder, scope):
 
-        whileCond = builder.function.append_basic_block(name='while_cond')
-        whileBod = builder.function.append_basic_block(name='while_body')
-        whileExit = builder.funciton.append_basic_block(name='while_exit')
-
-        
-        # Block for condition
-        builder.branch(whileCond)
-        builder.position_at_end(whileCond)
+        whileBod = builder.append_basic_block(name='while_body')
+        whileExit = builder.append_basic_block(name='while_exit')
 
         # Branch to right block
-        cond = self.compile_tree(node.children[0], builder, scope)
-        builder.cbranch(cond, whileBod, whileExit)
-
+        cond_head = self.compile_tree(node.children[0], builder, scope)
+        builder.cbranch(cond_head, whileBod, whileExit)
         # Block for block entry
-        builder.position_at_end(whileBod)
-        builder.branch(cond)
-
+        builder.position_at_start(whileBod)
+        self.compile_tree(node.children[1], builder, scope)
+        cond_body = self.compile_tree(node.children[0], builder, scope)
+        builder.cbranch(cond_body, whileBod, whileExit)
         # Block for end of while (no need to branch)
-        builder.position_at_end(whileExit)
+        builder.position_at_start(whileExit)
         
         return self.types['unit']
 
     def compile_if(self, node, builder, scope):
-
+        # If else
         if len(node.children) == 3:
-
             if node.type in self.types:
                 ifType = self.types[node.type]
             else:
@@ -409,6 +402,7 @@ class CodeGen():
                     builder.store(cast, ptr)
             return builder.load(ptr)
 
+        # If then
         else:
             with builder.if_then(self.compile_tree(node.children[0], builder, scope)):
                 i = self.compile_tree(node.chilren[1], builder, scope)
@@ -683,11 +677,12 @@ class CodeGen():
 
 
     def compile_program(self, node):
+        
         for child in node.children:
             if child.values[0] == "Main":
                 self.compile_main(child.children[1])
             else:
-                for method in child.children[1]:
+                for method in child.children[1].children:
                     self.compile_method(method)
 
 

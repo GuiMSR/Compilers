@@ -1,11 +1,12 @@
 class Main {
     main() : int32 {
-        let n : int32 <- 0 in
-        let max : int32 <- 10 in
-        while n < max do {
-            printInt32(n).print("\n");
-            n <- n + 1
-        };
+        if "" = "" then print("OK\n") else print("KO\n");
+        if "" = "a" then print("KO\n") else print("OK\n");
+        if "a" = "" then print("KO\n") else print("OK\n");
+        if "hello" = "hello" then print("OK\n") else print("KO\n");
+        if "hello" = "hello and more" then print("KO\n") else print("OK\n");
+        if "hello and more" = "hello" then print("KO\n") else print("OK\n");
+        if "a" = "b" then print("KO\n") else print("OK\n");
         0
     }
 }

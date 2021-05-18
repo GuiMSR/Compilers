@@ -146,20 +146,30 @@ class CodeGen():
             stringPtr = builder.gep(globalVar, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
             return stringPtr
 
+        # if expression is unit, returns a boolean with value
         if node.name == "par alone":
-            i = ir.VoidType
+            #i = ir.Constant(ir.IntType(1), 0)
+            i = ir.VoidType()
             return i
 
         if node.name == "self":
             ptr = scope.getValue(node.node_class)
             return builder.load(ptr)
+    
 
         if node.name == "object identifier":
             ptr = scope.getValue(node.values[0])
             if ptr is not None:
+                if ptr == self.types['unit']:
+                    return self.types['unit']
                 value = builder.load(ptr)
+
             else:
+                # object identifier is in fields
                 field = self.classes[node.node_class]['fields'].get(node.values[0])
+                if field[1] == self.types['unit']:
+                    return self.types['unit']
+
                 selfPtr = scope.getValue(node.node_class)
                 ld = builder.load(selfPtr)
                 fctType = builder.gep(ld, [self.types['int32'](0), self.types['int32'](field[0])], inbounds=True)
@@ -464,7 +474,8 @@ class CodeGen():
         # Compile body of the method
         retVal = self.compile_tree(node.children[2], builder, scope)
         if retVal == self.types['unit']:
-            builder.ret_void()
+            # if type of returning inside block is unit ,always returns a bool with value 0
+            builder.ret(ir.Constant(self.types['bool'], 0))
         else:
             builder.ret(retVal)
     
@@ -567,7 +578,11 @@ class CodeGen():
         # Set class methods inside dictionary and classVT body list
         for method in self.methods_dict[class_name]:
             if method[1] in self.types:
-                returnType = self.types[method[1]]
+                # If type of method is unit, sets return type of method to bool (linked directly to return value in compile_method function)
+                if method[1] == 'unit':
+                    returnType = self.types['bool']
+                else:
+                    returnType = self.types[method[1]]
             else:
                 returnType = self.classes[method[1]]['pointer']
 

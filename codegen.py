@@ -4,10 +4,9 @@ from llvmlite.ir import context
 from llvmlite.ir.values import GlobalVariable
 import object
 
-
+# Class for keeping track of scopes
 class variableScope():
 
-    # Create new scope for each field and method
     def __init__(self):
         self.scopes = [{}]
 
@@ -26,17 +25,19 @@ class variableScope():
                 return d[key]
         return None
 
-
+# Class for code generation
 class CodeGen():
-
     def __init__(self, parsed_tree, dictionaries):
         self.tree = parsed_tree
         self.extends = dictionaries[2]
         self.methods_dict = dictionaries[1]
         self.fields_dict = dictionaries[0]
         self.formals_dict = dictionaries[3]
+        # C functions
         self.pow = None
         self.strcmp = None
+
+        # module initialization and requirements for llvm
         self.module = ir.Module(name="vsop")
         self.binding = binding
         self.binding.initialize()
@@ -46,6 +47,7 @@ class CodeGen():
         self.module.triple = self.binding.get_default_triple()
         
 
+    # Function which performs the code generation
     def codeGeneration(self):
         self.types = {
             'int32' : ir.IntType(32),
@@ -76,10 +78,6 @@ class CodeGen():
         result = object_ll + result
         sys.stdout.write(result)
 
-    def print_ir_only(self, module):
-        sys.stdout.write(str(module))
-
-
     def _create_execution_engine(self):
         target = self.binding.Target.from_default_triple()
         target_machine = target.create_target_machine()
@@ -93,7 +91,7 @@ class CodeGen():
         self.engine.finalize_object()
         self.engine.run_static_constructors()
 
-    
+    # Function that dispatches into right function using the node name 
     def compile_tree(self, node, builder, scope):
         switcher = {
             "boolean literal": self.compile_expression,
@@ -146,26 +144,39 @@ class CodeGen():
             stringPtr = builder.gep(globalVar, [self.types['int32'](0), self.types['int32'](0)], inbounds=True)
             return stringPtr
 
+        # if expression is unit, returns a boolean with value
         if node.name == "par alone":
-            i = ir.VoidType
+            #i = ir.Constant(ir.IntType(1), 0)
+            i = ir.VoidType()
             return i
 
         if node.name == "self":
             ptr = scope.getValue(node.node_class)
             return builder.load(ptr)
+    
 
         if node.name == "object identifier":
             ptr = scope.getValue(node.values[0])
+
+            # If variable is in scope
             if ptr is not None:
+                if ptr == self.types['unit']:
+                    return self.types['unit']
                 value = builder.load(ptr)
+
             else:
+                # object identifier is in fields
                 field = self.classes[node.node_class]['fields'].get(node.values[0])
+                if field[1] == self.types['unit']:
+                    return self.types['unit']
+
                 selfPtr = scope.getValue(node.node_class)
                 ld = builder.load(selfPtr)
                 fctType = builder.gep(ld, [self.types['int32'](0), self.types['int32'](field[0])], inbounds=True)
                 value = builder.load(fctType)
             return value
-        
+    
+    # Function that compiles the body of methods
     def compile_class_inside(self, node, builder, scope):
         for method in node.children[1].children:
             fct = self.classes[node.values[0]]['methods'][method.children[0].values[0]][2]
@@ -176,10 +187,8 @@ class CodeGen():
 
     def compile_block(self, node, builder, scope):
         scope.addScope()
-
         for child in node.children:
             i =  self.compile_tree(child, builder, scope)
-        
         scope.removeScope()
         return i
 
@@ -249,7 +258,7 @@ class CodeGen():
             return builder.icmp_unsigned(node.values[0], self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
         else:
             if node.children[0].type == "unit":
-                #unit compared to unit is always true
+                # Unit compared to unit is always true
                 return self.types["bool"](1)
             if node.children[0].type == "bool" or node.children[0].type == "int32":
                 return builder.icmp_unsigned("==", self.compile_tree(node.children[0], builder, scope), self.compile_tree(node.children[1], builder, scope))
@@ -288,7 +297,6 @@ class CodeGen():
         return builder.load(ptr)
 
     def compile_binop(self, node, builder, scope):
-
         switcher = {
             "+" : self.compile_plus,
             "-": self.compile_sub,
@@ -464,7 +472,8 @@ class CodeGen():
         # Compile body of the method
         retVal = self.compile_tree(node.children[2], builder, scope)
         if retVal == self.types['unit']:
-            builder.ret_void()
+            # if type of returning inside block is unit ,always returns a bool with value 0
+            builder.ret(ir.Constant(self.types['bool'], 0))
         else:
             builder.ret(retVal)
     
@@ -567,11 +576,17 @@ class CodeGen():
         # Set class methods inside dictionary and classVT body list
         for method in self.methods_dict[class_name]:
             if method[1] in self.types:
-                returnType = self.types[method[1]]
+                # If type of method is unit, sets return type of method to bool (linked directly to return value in compile_method function)
+                if method[1] == 'unit':
+                    returnType = self.types['bool']
+                else:
+                    returnType = self.types[method[1]]
             else:
                 returnType = self.classes[method[1]]['pointer']
 
             argsType  = [classPointer.as_pointer()]
+
+            # Get arguments types
             for arg in self.formals_dict[(class_name, method[0])]:
                 if arg[1] in self.types:
                     argsType.append(self.types[arg[1]])
@@ -689,7 +704,7 @@ class CodeGen():
 
         builder.ret(arg)
 
-
+    # Compiles main function and functions inside class Main
     def compile_main(self, node):
         for method in node.children:
             if method.children[0].values[0] == "main":
@@ -709,7 +724,6 @@ class CodeGen():
 
 
     def compile_program(self, node):
-        
         for child in node.children:
             if child.values[0] == "Main":
                 self.compile_main(child.children[1])
@@ -717,7 +731,7 @@ class CodeGen():
                 for method in child.children[1].children:
                     self.compile_method(method)
 
-
+    # Use to compile parents before children
     def compile_extends(self, class_name):
         if self.extends[class_name] not in self.classes:
             self.compile_extends(self.extends[class_name])
@@ -725,7 +739,7 @@ class CodeGen():
         elif class_name not in self.classes:
             self.compile_class(class_name)
 
-
+    # Geneartes llvm structures and vtables for every class, starting always with the parents
     def compile_classes(self):
         for class_name in self.extends:
             while self.extends[class_name] not in self.classes:

@@ -210,7 +210,8 @@ class VsopParser():
         p[0] = st.Tree_node("formal", [], [p[1]], pos, self.current_class, p[3])
 
     def p_block(self, p): 
-        'block : block_lbrace inblock RBRACE'
+        '''block : block_lbrace inblock RBRACE
+                | block_lbrace RBRACE'''
         pos = self.find_position(p, 3)
         block_type = "unit"
         if self.blocks[-1]:
@@ -225,16 +226,13 @@ class VsopParser():
 
     def p_block_inside(self, p):
         '''inblock : inblock SEMICOLON expression
-                | expression
-                |'''
+                | expression'''
         if len(p) == 2:
             p[0] = None
             self.blocks[-1].append(p[1])
         elif len(p) == 4:
             p[0] = None
             self.blocks[-1].append(p[3])
-        else:
-            p[0] = None
 
     def p_block_error(self,p):
         '''inblock : inblock error '''

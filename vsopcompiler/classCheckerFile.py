@@ -18,8 +18,6 @@ class ClassChecker():
         self.parser = yacc.yacc(module=self, debug=False)
         self.file_name = file_name
         self.string_text = string_text
-        self.methods = []
-        self.fields = []
         self.classes = []
         self.current_class = ""
         self.current_method = ""
@@ -226,10 +224,6 @@ class ClassChecker():
     def p_program(self, p):
         '''program : program class
                     | class'''
-        if len(p) == 3:
-            p[0] = str(str(p[1]) + str(p[2]))
-        else:
-            p[0] = str(str(p[1]))
 
     def p_field_method_error(self, p):
         '''class : field
@@ -255,13 +249,9 @@ class ClassChecker():
         '''class : CLASS new_class_scope class-body
                 | CLASS new_class_scope EXTENDS TYPE_IDENTIFIER class-body'''
         if len(p) == 4:
-            p[0] = "Class(" + p[2] + ", Object, " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
             self.extends.update({p[2]: "Object"})
         else: 
-            p[0] = "Class(" + p[2] + ", " + p[4] + ", " + str(self.fields).replace("'", '').replace('\\\\','\\') + ", " + str(self.methods).replace("'", '').replace('\\\\','\\') + ")"
             self.extends.update({p[2]: p[4]})
-        self.fields = []
-        self.methods = []
         self.classes.append(p[0])
         self.current_class = ""
 
@@ -284,7 +274,6 @@ class ClassChecker():
 
     def p_class_body(self, p):
         'class-body : LBRACE class-body-in RBRACE'
-        p[0] = p[1] + p[2] + p[3]
 
     def p_class_braces_error(self, p):
         'class-body : LBRACE class-body-in error'
@@ -293,26 +282,17 @@ class ClassChecker():
 
     def p_class_body_field(self, p):
         'class-body-in : class-body-in field'
-        p[0] = p[1] + p[2]
-        self.fields.append(p[2])
     
     def p_class_body_method(self, p):
         'class-body-in : class-body-in method'
-        p[0] = p[1] + p[2]
-        self.methods.append(p[2])
         
 
     def p_class_body_empty(self, p):
         'class-body-in : '
-        p[0] = ''
 
     def p_field(self, p):
         '''field : OBJECT_IDENTIFIER COLON type SEMICOLON
                 | OBJECT_IDENTIFIER COLON type ASSIGN expression SEMICOLON'''
-        if len(p) == 5:
-            p[0] = "Field(" + p[1] + ", " + p[3] + ")"
-        else:
-            p[0] = "Field(" + p[1] + ", " + p[3] + ", " + p[5] +")"
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         for i in self.fields_dict[self.current_class]:
             if i[0] == p[1]:
@@ -326,7 +306,6 @@ class ClassChecker():
 
     def p_method(self, p):
         'method : new_method LPAR formals RPAR COLON type block'
-        p[0] = "Method(" + p[1] + ", [" + p[3] + "], " + p[6] + ", " + p[7] + ")"
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         methods_list = self.methods_dict[self.current_class]
         methods_list.append((p[1],p[6], self.compute_line(p, 2), colno))
@@ -344,10 +323,6 @@ class ClassChecker():
         self.current_method = p[1]
         self.formals.update({(self.current_class, p[1]) : []})
 
-    def p_new_variables_scope(self, p):
-        "new_variables_scope :"
-        p[0] = ''
-
     def p_type(self, p):
         '''type : TYPE_IDENTIFIER
                 | INT32
@@ -360,16 +335,9 @@ class ClassChecker():
         '''formals : formal
                 | formals COMMA formal
                 | '''
-        if len(p) == 2:
-            p[0] = p[1]
-        elif len(p) == 4:
-            p[0] = p[1] + ", " + p[3]
-        else:
-            p[0] = ''
 
     def p_formal(self, p):
         'formal : OBJECT_IDENTIFIER COLON type'
-        p[0] = p[1] + " " + p[2] + " " + p[3]
         colno = p.lexpos(1) - self.string_text.rfind('\n', 0, p.lexpos(1))
         for i in self.formals[(self.current_class, self.current_method)]:
             if i[0] == p[1]:
@@ -380,76 +348,38 @@ class ClassChecker():
         self.formals.update({(self.current_class, self.current_method): formals_list})
 
     def p_block(self, p): 
-        'block : LBRACE check_block new_variables_scope inblock RBRACE'
-        result = "[" + p[4] + "]"
-        p[0] = result.replace(';', ', ')
-
-    def p_check_block(self, p):
-        'check_block :'
-        p[0] = ''
+        '''block : LBRACE inblock RBRACE
+                | LBRACE RBRACE'''
         
-
     def p_block_inside(self, p):
         '''inblock : inblock SEMICOLON expression
-                | expression
-                |'''
-        if len(p) == 2:
-            p[0] = p[1]
-        elif len(p) == 4:
-            p[0] = p[1] + p[2] + p[3]
-        else:
-            p[0] = ''
-
-    def p_block_error(self,p):
-        '''inblock : inblock error '''
-        sys.stderr.write("semicolon is missing after {0}\n".format(str(p[1])))
-        sys.exit(1)
+                | expression'''
 
     def p_if(self, p):
         '''expression : IF expression THEN expression
                     | IF expression THEN expression ELSE expression'''
-        if len(p) == 5:
-            p[0] = "If(" + p[2] + ", " + p[4] + ")"
-        else: 
-            p[0] = "If(" + p[2] + ", " + p[4] + ", " + p[6] + ")"
 
     def p_while(self, p):
         'expression : WHILE expression DO expression'
-        p[0] = "While(" + p[2] + ", " + p[4] + ")"
 
     def p_let(self, p):
         '''expression : LET let_type IN expression
                     | LET let_type ASSIGN expression IN expression'''
-        if len(p) == 5:
-            p[0] = "Let(" + p[2] + ", " + p[4] + ")"
-        else:
-            p[0] = "Let(" + p[2] + ", " + p[4] + ", " + p[6] +")"
 
     def p_let_type(self, p):
         "let_type : OBJECT_IDENTIFIER COLON type"
-        p[0] = p[1] + ", " + p[3] 
 
 
     def p_assign(self, p):
         'expression : OBJECT_IDENTIFIER ASSIGN expression'
-        p[0] = "Assign(" + p[1] + ", " + p[3] + ")"
 
     def p_unary_operators(self, p):
-        '''expression : NOT expression check_bool
-                    | MINUS expression check_int %prec UMINUS'''
-        p[0] = "UnOp(" + p[1] + ", " + p[2] + ")"
+        '''expression : NOT expression
+                    | MINUS expression %prec UMINUS'''
 
-    def p_check_int(self, p):
-        "check_int :"
-        p[0] = ''
-
-    def p_check_bool(self, p):
-        "check_bool :"
-        p[0] = ''
 
     def p_unary_isnull(self, p):
         "expression : ISNULL expression"
-        p[0] = "UnOp(" + p[1] + ", " + p[2] + ") : bool"
 
     def p_binary_operators(self, p):
         '''expression : expression PLUS expression
@@ -461,41 +391,28 @@ class ClassChecker():
                   | expression LOWER expression
                   | expression POW expression
                   | expression AND expression'''
-        p[0] = "BinOp("+ p[2] +", " + p[1] + ", " + p[3] +")"
-
 
     def p_object_call(self, p):
         '''expression : OBJECT_IDENTIFIER LPAR args RPAR
                     | expression DOT OBJECT_IDENTIFIER LPAR args RPAR'''
-        if len(p) == 5:
-            p[0] = "Call(self : " + self.current_class + ", " + p[1] + ", [" + p[3] + "])"
-        else:           
-            p[0] = "Call("+ p[1] +  ", " + p[3] + ", [" + p[5] + "])"
-  
 
     def p_new_type(self, p):
         'expression : NEW TYPE_IDENTIFIER'
-        p[0] = "New(" + p[2] + ") : " + p[2]
 
     def p_expression_object(self, p):
         'expression : OBJECT_IDENTIFIER'
-        p[0] = p[1]
 
     def p_expression_self(self, p):
         'expression : SELF'
-        p[0] = p[1]
 
     def p_expression_literal(self, p):
         'expression : literal'
-        p[0] = p[1]
 
     def p_par_alone(self,p):
         'expression : LPAR RPAR'
-        p[0] = ("()")
 
     def p_par_expression(self, p): 
         'expression : LPAR expression RPAR'
-        p[0] = p[2]
 
     def p_par_error(self,p):
         '''expression : LPAR expression error
@@ -505,7 +422,6 @@ class ClassChecker():
 
     def p_expression_block(self, p):
         'expression : block'
-        p[0] = p[1]
 
     def p_expression_error(self, p):
         '''expression : error'''
@@ -516,31 +432,21 @@ class ClassChecker():
         '''args : args COMMA expression
                 | expression
                 |'''
-        if len(p) == 4:
-            p[0] = p[1] + p[2] + " " + p[3]
-        elif len(p) == 2:
-            p[0] = p[1]
-        else:
-            p[0] = ''
 
     def p_literal(self, p):
         '''literal : literal_integer
                 | literal_string
                 | boolean-literal'''
-        p[0] = p[1]
 
     def p_literal_string(self, p):
         "literal_string : string_literal"
-        p[0] = p[1] + " : string"
 
     def p_literal_integer(self, p):
         "literal_integer : INTEGER_LITERAL"
-        p[0] = p[1] + " : int32"
 
     def p_boolean_literal(self, p):
         '''boolean-literal : TRUE 
                         | FALSE'''
-        p[0] = p[1] + " : bool"
 
     # Find column number at the begin of a token
     def find_column(self, input, token):

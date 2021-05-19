@@ -466,357 +466,110 @@ skip_while:                             # @skip_while
 	.size	skip_while, .Lfunc_end10-skip_while
 	.cfi_endproc
                                         # -- End function
-	.globl	Main__guessN                    # -- Begin function Main__guessN
-	.p2align	4, 0x90
-	.type	Main__guessN,@function
-Main__guessN:                           # @Main__guessN
-	.cfi_startproc
-# %bb.0:                                # %.3
-	pushq	%rbp
-	.cfi_def_cfa_offset 16
-	.cfi_offset %rbp, -16
-	movq	%rsp, %rbp
-	.cfi_def_cfa_register %rbp
-	pushq	%r15
-	pushq	%r14
-	pushq	%r13
-	pushq	%r12
-	pushq	%rbx
-	subq	$40, %rsp
-	.cfi_offset %rbx, -56
-	.cfi_offset %r12, -48
-	.cfi_offset %r13, -40
-	.cfi_offset %r14, -32
-	.cfi_offset %r15, -24
-	movq	%rdi, -48(%rbp)
-	movq	(%rdi), %rax
-	movl	$string, %esi
-	callq	*(%rax)
-	movq	(%rax), %rcx
-	movq	-48(%rbp), %rdx
-	movl	8(%rdx), %esi
-	movq	%rax, %rdi
-	callq	*16(%rcx)
-	movq	(%rax), %rcx
-	movl	$string.1, %esi
-	movq	%rax, %rdi
-	callq	*(%rcx)
-	movb	$1, %al
-	testb	%al, %al
-	jne	.LBB11_3
-# %bb.1:                                # %.3.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.2, %esi
-	callq	*(%rax)
-	jmp	.LBB11_2
-.LBB11_3:                               # %.3.else
-	movq	%rsp, %rbx
-	addq	$-16, %rbx
-	movq	%rbx, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$100, 8(%rax)
-	jbe	.LBB11_4
-# %bb.12:                               # %.3.else.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.3, %esi
-	callq	*(%rax)
-	jmp	.LBB11_13
-.LBB11_4:                               # %.3.else.else
-	movq	%rsp, %r14
-	addq	$-16, %r14
-	movq	%r14, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$50, 8(%rax)
-	jae	.LBB11_14
-# %bb.5:                                # %.3.else.else.if
-	movq	%rsp, %r15
-	addq	$-16, %r15
-	movq	%r15, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$25, 8(%rax)
-	jae	.LBB11_16
-# %bb.6:                                # %.3.else.else.if.if
-	movq	%rsp, %r12
-	addq	$-16, %r12
-	movq	%r12, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$12, 8(%rax)
-	jae	.LBB11_18
-# %bb.7:                                # %.3.else.else.if.if.if
-	movq	%rsp, %r13
-	addq	$-16, %r13
-	movq	%r13, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$6, 8(%rax)
-	jae	.LBB11_30
-# %bb.8:                                # %.3.else.else.if.if.if.if
-	movq	%rsp, %rcx
-	addq	$-16, %rcx
-	movq	%rcx, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$3, 8(%rax)
-	movq	%rcx, -72(%rbp)                 # 8-byte Spill
-	movq	%rsp, %rdx
-	jae	.LBB11_25
-# %bb.9:                                # %.3.else.else.if.if.if.if.if
-	addq	$-16, %rdx
-	movq	%rdx, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$2, 8(%rax)
-	movq	%rdx, -64(%rbp)                 # 8-byte Spill
-	jae	.LBB11_20
-# %bb.10:                               # %.3.else.else.if.if.if.if.if.if
-	movq	%rsp, %rax
-	addq	$-16, %rax
-	movq	%rax, -56(%rbp)                 # 8-byte Spill
-	movq	%rax, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$0, 8(%rax)
-	jne	.LBB11_23
-# %bb.11:                               # %.3.else.else.if.if.if.if.if.if.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.4, %esi
-	jmp	.LBB11_24
-.LBB11_14:                              # %.3.else.else.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.18, %esi
-	callq	*(%rax)
-	jmp	.LBB11_15
-.LBB11_16:                              # %.3.else.else.if.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.17, %esi
-	callq	*(%rax)
-	jmp	.LBB11_17
-.LBB11_18:                              # %.3.else.else.if.if.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.16, %esi
-	callq	*(%rax)
-	jmp	.LBB11_19
-.LBB11_30:                              # %.3.else.else.if.if.if.else
-	movq	%rsp, %rcx
-	addq	$-16, %rcx
-	movq	%rcx, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$9, 8(%rax)
-	movq	%rcx, -72(%rbp)                 # 8-byte Spill
-	movq	%rsp, %rdx
-	jae	.LBB11_31
-# %bb.33:                               # %.3.else.else.if.if.if.else.if
-	addq	$-16, %rdx
-	movq	%rdx, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$7, 8(%rax)
-	movq	%rdx, -64(%rbp)                 # 8-byte Spill
-	jae	.LBB11_34
-# %bb.36:                               # %.3.else.else.if.if.if.else.if.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.10, %esi
-	jmp	.LBB11_21
-.LBB11_25:                              # %.3.else.else.if.if.if.if.else
-	addq	$-16, %rdx
-	movq	%rdx, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$4, 8(%rax)
-	movq	%rdx, -64(%rbp)                 # 8-byte Spill
-	jae	.LBB11_26
-# %bb.28:                               # %.3.else.else.if.if.if.if.else.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.7, %esi
-	jmp	.LBB11_21
-.LBB11_31:                              # %.3.else.else.if.if.if.else.else
-	addq	$-16, %rdx
-	movq	%rdx, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$10, 8(%rax)
-	movq	%rdx, -64(%rbp)                 # 8-byte Spill
-	jae	.LBB11_39
-# %bb.32:                               # %.3.else.else.if.if.if.else.else.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.13, %esi
-	jmp	.LBB11_21
-.LBB11_20:                              # %.3.else.else.if.if.if.if.if.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.6, %esi
-.LBB11_21:                              # %.3.else.else.if.if.if.if.if.endif
-	callq	*(%rax)
-	movq	-64(%rbp), %rdx                 # 8-byte Reload
-	movq	-72(%rbp), %rcx                 # 8-byte Reload
-	movq	%rax, (%rdx)
-	jmp	.LBB11_22
-.LBB11_34:                              # %.3.else.else.if.if.if.else.if.else
-	movq	%rsp, %rax
-	addq	$-16, %rax
-	movq	%rax, -56(%rbp)                 # 8-byte Spill
-	movq	%rax, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$8, 8(%rax)
-	jae	.LBB11_37
-# %bb.35:                               # %.3.else.else.if.if.if.else.if.else.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.11, %esi
-	jmp	.LBB11_24
-.LBB11_26:                              # %.3.else.else.if.if.if.if.else.else
-	movq	%rsp, %rax
-	addq	$-16, %rax
-	movq	%rax, -56(%rbp)                 # 8-byte Spill
-	movq	%rax, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$5, 8(%rax)
-	jae	.LBB11_29
-# %bb.27:                               # %.3.else.else.if.if.if.if.else.else.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.8, %esi
-	jmp	.LBB11_24
-.LBB11_39:                              # %.3.else.else.if.if.if.else.else.else
-	movq	%rsp, %rax
-	addq	$-16, %rax
-	movq	%rax, -56(%rbp)                 # 8-byte Spill
-	movq	%rax, %rsp
-	movq	-48(%rbp), %rax
-	cmpl	$11, 8(%rax)
-	jae	.LBB11_40
-# %bb.38:                               # %.3.else.else.if.if.if.else.else.else.if
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.14, %esi
-	jmp	.LBB11_24
-.LBB11_23:                              # %.3.else.else.if.if.if.if.if.if.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.5, %esi
-	jmp	.LBB11_24
-.LBB11_37:                              # %.3.else.else.if.if.if.else.if.else.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.12, %esi
-	jmp	.LBB11_24
-.LBB11_29:                              # %.3.else.else.if.if.if.if.else.else.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.9, %esi
-	jmp	.LBB11_24
-.LBB11_40:                              # %.3.else.else.if.if.if.else.else.else.else
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.15, %esi
-.LBB11_24:                              # %.3.else.else.if.if.if.if.if.if.endif
-	callq	*(%rax)
-	movq	-56(%rbp), %rcx                 # 8-byte Reload
-	movq	%rax, (%rcx)
-	movq	%rcx, %rax
-	movq	(%rcx), %rax
-	movq	-64(%rbp), %rdx                 # 8-byte Reload
-	movq	%rax, (%rdx)
-	movq	-72(%rbp), %rcx                 # 8-byte Reload
-.LBB11_22:                              # %.3.else.else.if.if.if.if.if.endif
-	movq	(%rdx), %rax
-	movq	%rax, (%rcx)
-	movq	(%rcx), %rax
-	movq	%rax, (%r13)
-	movq	(%r13), %rax
-.LBB11_19:                              # %.3.else.else.if.if.endif
-	movq	%rax, (%r12)
-	movq	(%r12), %rax
-.LBB11_17:                              # %.3.else.else.if.endif
-	movq	%rax, (%r15)
-	movq	(%r15), %rax
-.LBB11_15:                              # %.3.else.else.endif
-	movq	%rax, (%r14)
-	movq	(%r14), %rax
-.LBB11_13:                              # %.3.else.endif
-	movq	%rax, (%rbx)
-	movq	(%rbx), %rax
-.LBB11_2:                               # %.3.endif
-	movq	%rax, -80(%rbp)
-	movq	-48(%rbp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.19, %esi
-	callq	*(%rax)
-	xorl	%eax, %eax
-	leaq	-40(%rbp), %rsp
-	popq	%rbx
-	popq	%r12
-	popq	%r13
-	popq	%r14
-	popq	%r15
-	popq	%rbp
-	.cfi_def_cfa %rsp, 8
-	retq
-.Lfunc_end11:
-	.size	Main__guessN, .Lfunc_end11-Main__guessN
-	.cfi_endproc
-                                        # -- End function
-	.globl	main                            # -- Begin function main
+	.section	.rodata.cst8,"aM",@progbits,8
+	.p2align	3                               # -- Begin function main
+.LCPI11_0:
+	.quad	0x4000000000000000              # double 2
+.LCPI11_1:
+	.quad	0x4034000000000000              # double 20
+.LCPI11_2:
+	.quad	0x4014000000000000              # double 5
+.LCPI11_3:
+	.quad	0x4018000000000000              # double 6
+.LCPI11_4:
+	.quad	0x4010000000000000              # double 4
+.LCPI11_5:
+	.quad	0x4008000000000000              # double 3
+	.text
+	.globl	main
 	.p2align	4, 0x90
 	.type	main,@function
 main:                                   # @main
 	.cfi_startproc
 # %bb.0:                                # %.3
-	pushq	%rax
+	pushq	%r14
 	.cfi_def_cfa_offset 16
+	pushq	%rbx
+	.cfi_def_cfa_offset 24
+	pushq	%rax
+	.cfi_def_cfa_offset 32
+	.cfi_offset %rbx, -24
+	.cfi_offset %r14, -16
 	callq	Main___new
+	movq	%rax, %rbx
 	movq	%rax, (%rsp)
+	movq	(%rax), %rax
+	movq	16(%rax), %r14
+	movsd	.LCPI11_0(%rip), %xmm0          # xmm0 = mem[0],zero
+	movsd	.LCPI11_1(%rip), %xmm1          # xmm1 = mem[0],zero
+	callq	pow
+	cvttsd2si	%xmm0, %rsi
+	movq	%rbx, %rdi
+                                        # kill: def $esi killed $esi killed $rsi
+	callq	*%r14
 	movq	(%rax), %rcx
+	movl	$string, %esi
 	movq	%rax, %rdi
-	callq	*48(%rcx)
-	movq	(%rsp), %rax
-	movl	$1, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
-	movq	(%rsp), %rax
-	movl	$2, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
-	movq	(%rsp), %rax
-	movl	$4, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
-	movq	(%rsp), %rax
-	movl	$8, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
-	movq	(%rsp), %rax
-	movl	$16, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
-	movq	(%rsp), %rax
-	movl	$32, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
-	movq	(%rsp), %rax
-	movl	$64, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
-	movq	(%rsp), %rax
-	movl	$128, 8(%rax)
-	movq	(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*48(%rax)
+	callq	*(%rcx)
+	movq	(%rsp), %rbx
+	movq	(%rbx), %rax
+	movq	16(%rax), %r14
+	movsd	.LCPI11_2(%rip), %xmm0          # xmm0 = mem[0],zero
+	movsd	.LCPI11_3(%rip), %xmm1          # xmm1 = mem[0],zero
+	callq	pow
+	cvttsd2si	%xmm0, %rsi
+	movq	%rbx, %rdi
+                                        # kill: def $esi killed $esi killed $rsi
+	callq	*%r14
+	movq	(%rax), %rcx
+	movl	$string.1, %esi
+	movq	%rax, %rdi
+	callq	*(%rcx)
+	movq	(%rsp), %rbx
+	movq	(%rbx), %rax
+	movq	16(%rax), %r14
+	movsd	.LCPI11_4(%rip), %xmm1          # xmm1 = mem[0],zero
+	movsd	.LCPI11_0(%rip), %xmm0          # xmm0 = mem[0],zero
+	callq	pow
+	cvttsd2si	%xmm0, %rsi
+	negl	%esi
+	movq	%rbx, %rdi
+                                        # kill: def $esi killed $esi killed $rsi
+	callq	*%r14
+	movq	(%rax), %rcx
+	movl	$string.2, %esi
+	movq	%rax, %rdi
+	callq	*(%rcx)
+	movq	(%rsp), %rbx
+	movq	(%rbx), %rax
+	movq	16(%rax), %r14
+	movsd	.LCPI11_5(%rip), %xmm0          # xmm0 = mem[0],zero
+	movsd	.LCPI11_0(%rip), %xmm1          # xmm1 = mem[0],zero
+	callq	pow
+	cvttsd2si	%xmm0, %rax
+	movl	%eax, %eax
+	xorps	%xmm1, %xmm1
+	cvtsi2sd	%rax, %xmm1
+	movsd	.LCPI11_4(%rip), %xmm0          # xmm0 = mem[0],zero
+	callq	pow
+	cvttsd2si	%xmm0, %rsi
+	movq	%rbx, %rdi
+                                        # kill: def $esi killed $esi killed $rsi
+	callq	*%r14
+	movq	(%rax), %rcx
+	movl	$string.3, %esi
+	movq	%rax, %rdi
+	callq	*(%rcx)
 	xorl	%eax, %eax
-	popq	%rcx
+	addq	$8, %rsp
+	.cfi_def_cfa_offset 24
+	popq	%rbx
+	.cfi_def_cfa_offset 16
+	popq	%r14
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end12:
-	.size	main, .Lfunc_end12-main
+.Lfunc_end11:
+	.size	main, .Lfunc_end11-main
 	.cfi_endproc
                                         # -- End function
 	.globl	Main___new                      # -- Begin function Main___new
@@ -827,15 +580,15 @@ Main___new:                             # @Main___new
 # %bb.0:                                # %.2
 	pushq	%rax
 	.cfi_def_cfa_offset 16
-	movl	$16, %edi
+	movl	$8, %edi
 	callq	malloc
 	movq	%rax, %rdi
 	callq	Main___init
 	popq	%rcx
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end13:
-	.size	Main___new, .Lfunc_end13-Main___new
+.Lfunc_end12:
+	.size	Main___new, .Lfunc_end12-Main___new
 	.cfi_endproc
                                         # -- End function
 	.globl	Main___init                     # -- Begin function Main___init
@@ -849,19 +602,18 @@ Main___init:                            # @Main___init
 	.cfi_offset %rbx, -16
 	movq	%rdi, %rbx
 	testq	%rdi, %rdi
-	je	.LBB14_2
+	je	.LBB13_2
 # %bb.1:                                # %.3.if
 	movq	%rbx, %rdi
 	callq	Object___init
 	movq	$MainVT, (%rbx)
-	movl	$0, 8(%rbx)
-.LBB14_2:                               # %.3.endif
+.LBB13_2:                               # %.3.endif
 	movq	%rbx, %rax
 	popq	%rbx
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end14:
-	.size	Main___init, .Lfunc_end14-Main___init
+.Lfunc_end13:
+	.size	Main___init, .Lfunc_end13-Main___init
 	.cfi_endproc
                                         # -- End function
 	.type	.str,@object                    # @.str
@@ -952,128 +704,31 @@ MainVT:
 	.quad	Object__inputLine
 	.quad	Object__inputBool
 	.quad	Object__inputInt32
-	.quad	Main__guessN
 	.quad	main
-	.size	MainVT, 64
+	.size	MainVT, 56
 
 	.type	string,@object                  # @string
 	.globl	string
 string:
-	.asciz	"n = "
-	.size	string, 5
+	.asciz	"\n"
+	.size	string, 2
 
 	.type	string.1,@object                # @string.1
 	.globl	string.1
 string.1:
-	.asciz	", guess is "
-	.size	string.1, 12
+	.asciz	"\n"
+	.size	string.1, 2
 
 	.type	string.2,@object                # @string.2
 	.globl	string.2
 string.2:
-	.asciz	"n < 0"
-	.size	string.2, 6
+	.asciz	"\n"
+	.size	string.2, 2
 
 	.type	string.3,@object                # @string.3
 	.globl	string.3
 string.3:
-	.asciz	"n > 100"
-	.size	string.3, 8
-
-	.type	string.4,@object                # @string.4
-	.globl	string.4
-string.4:
-	.asciz	"n = 0"
-	.size	string.4, 6
-
-	.type	string.5,@object                # @string.5
-	.globl	string.5
-string.5:
-	.asciz	"n = 1"
-	.size	string.5, 6
-
-	.type	string.6,@object                # @string.6
-	.globl	string.6
-string.6:
-	.asciz	"n = 2"
-	.size	string.6, 6
-
-	.type	string.7,@object                # @string.7
-	.globl	string.7
-string.7:
-	.asciz	"n = 3"
-	.size	string.7, 6
-
-	.type	string.8,@object                # @string.8
-	.globl	string.8
-string.8:
-	.asciz	"n = 4"
-	.size	string.8, 6
-
-	.type	string.9,@object                # @string.9
-	.globl	string.9
-string.9:
-	.asciz	"n = 5"
-	.size	string.9, 6
-
-	.type	string.10,@object               # @string.10
-	.globl	string.10
-string.10:
-	.asciz	"n = 6"
-	.size	string.10, 6
-
-	.type	string.11,@object               # @string.11
-	.globl	string.11
-string.11:
-	.asciz	"n = 7"
-	.size	string.11, 6
-
-	.type	string.12,@object               # @string.12
-	.globl	string.12
-string.12:
-	.asciz	"n = 8"
-	.size	string.12, 6
-
-	.type	string.13,@object               # @string.13
-	.globl	string.13
-string.13:
-	.asciz	"n = 9"
-	.size	string.13, 6
-
-	.type	string.14,@object               # @string.14
-	.globl	string.14
-string.14:
-	.asciz	"n = 10"
-	.size	string.14, 7
-
-	.type	string.15,@object               # @string.15
-	.globl	string.15
-string.15:
-	.asciz	"n = 11"
-	.size	string.15, 7
-
-	.type	string.16,@object               # @string.16
-	.globl	string.16
-string.16:
-	.asciz	"12 <= n < 25"
-	.size	string.16, 13
-
-	.type	string.17,@object               # @string.17
-	.globl	string.17
-string.17:
-	.asciz	"25 <= n < 50"
-	.size	string.17, 13
-
-	.type	string.18,@object               # @string.18
-	.globl	string.18
-string.18:
-	.asciz	"50 <= n <= 100"
-	.size	string.18, 15
-
-	.type	string.19,@object               # @string.19
-	.globl	string.19
-string.19:
 	.asciz	"\n"
-	.size	string.19, 2
+	.size	string.3, 2
 
 	.section	".note.GNU-stack","",@progbits

@@ -92,8 +92,8 @@ def print_unop(node, with_types):
 
 def print_assign(node, with_types):
     if with_types and not node.type is None:
-        return "Assign("+ print_tree(node.children[0], 1) + ", " + print_tree(node.children[1], 1) +") : " + node.type
-    return "Assign("+ print_tree(node.children[0], with_types) + ", " + print_tree(node.children[1], with_types) +")"
+        return "Assign("+ print_tree(node.children[0], 0) + ", " + print_tree(node.children[1], 1) +") : " + node.type
+    return "Assign("+ print_tree(node.children[0], 0) + ", " + print_tree(node.children[1], with_types) +")"
 
 def print_let(node, with_types):
     if with_types and not node.type is None:

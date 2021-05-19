@@ -466,36 +466,26 @@ skip_while:                             # @skip_while
 	.size	skip_while, .Lfunc_end10-skip_while
 	.cfi_endproc
                                         # -- End function
-	.globl	List__isNil                     # -- Begin function List__isNil
+	.globl	MyClass__myMethod               # -- Begin function MyClass__myMethod
 	.p2align	4, 0x90
-	.type	List__isNil,@function
-List__isNil:                            # @List__isNil
+	.type	MyClass__myMethod,@function
+MyClass__myMethod:                      # @MyClass__myMethod
 	.cfi_startproc
-# %bb.0:                                # %.3
+# %bb.0:                                # %.5
+	movl	%esi, %eax
 	movq	%rdi, -8(%rsp)
-	movb	$1, %al
+	movl	%esi, -20(%rsp)
+	movq	%rdx, -16(%rsp)
+	movl	%esi, -24(%rsp)
 	retq
 .Lfunc_end11:
-	.size	List__isNil, .Lfunc_end11-List__isNil
+	.size	MyClass__myMethod, .Lfunc_end11-MyClass__myMethod
 	.cfi_endproc
                                         # -- End function
-	.globl	List__length                    # -- Begin function List__length
+	.globl	MyClass___new                   # -- Begin function MyClass___new
 	.p2align	4, 0x90
-	.type	List__length,@function
-List__length:                           # @List__length
-	.cfi_startproc
-# %bb.0:                                # %.3
-	movq	%rdi, -8(%rsp)
-	xorl	%eax, %eax
-	retq
-.Lfunc_end12:
-	.size	List__length, .Lfunc_end12-List__length
-	.cfi_endproc
-                                        # -- End function
-	.globl	List___new                      # -- Begin function List___new
-	.p2align	4, 0x90
-	.type	List___new,@function
-List___new:                             # @List___new
+	.type	MyClass___new,@function
+MyClass___new:                          # @MyClass___new
 	.cfi_startproc
 # %bb.0:                                # %.2
 	pushq	%rax
@@ -503,18 +493,18 @@ List___new:                             # @List___new
 	movl	$8, %edi
 	callq	malloc
 	movq	%rax, %rdi
-	callq	List___init
+	callq	MyClass___init
 	popq	%rcx
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end13:
-	.size	List___new, .Lfunc_end13-List___new
+.Lfunc_end12:
+	.size	MyClass___new, .Lfunc_end12-MyClass___new
 	.cfi_endproc
                                         # -- End function
-	.globl	List___init                     # -- Begin function List___init
+	.globl	MyClass___init                  # -- Begin function MyClass___init
 	.p2align	4, 0x90
-	.type	List___init,@function
-List___init:                            # @List___init
+	.type	MyClass___init,@function
+MyClass___init:                         # @MyClass___init
 	.cfi_startproc
 # %bb.0:                                # %.3
 	pushq	%rbx
@@ -522,173 +512,18 @@ List___init:                            # @List___init
 	.cfi_offset %rbx, -16
 	movq	%rdi, %rbx
 	testq	%rdi, %rdi
-	je	.LBB14_2
+	je	.LBB13_2
 # %bb.1:                                # %.3.if
 	movq	%rbx, %rdi
 	callq	Object___init
-	movq	$ListVT, (%rbx)
-.LBB14_2:                               # %.3.endif
+	movq	$MyClassVT, (%rbx)
+.LBB13_2:                               # %.3.endif
 	movq	%rbx, %rax
 	popq	%rbx
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end14:
-	.size	List___init, .Lfunc_end14-List___init
-	.cfi_endproc
-                                        # -- End function
-	.globl	Nil___new                       # -- Begin function Nil___new
-	.p2align	4, 0x90
-	.type	Nil___new,@function
-Nil___new:                              # @Nil___new
-	.cfi_startproc
-# %bb.0:                                # %.2
-	pushq	%rax
-	.cfi_def_cfa_offset 16
-	movl	$8, %edi
-	callq	malloc
-	movq	%rax, %rdi
-	callq	Nil___init
-	popq	%rcx
-	.cfi_def_cfa_offset 8
-	retq
-.Lfunc_end15:
-	.size	Nil___new, .Lfunc_end15-Nil___new
-	.cfi_endproc
-                                        # -- End function
-	.globl	Nil___init                      # -- Begin function Nil___init
-	.p2align	4, 0x90
-	.type	Nil___init,@function
-Nil___init:                             # @Nil___init
-	.cfi_startproc
-# %bb.0:                                # %.3
-	pushq	%rbx
-	.cfi_def_cfa_offset 16
-	.cfi_offset %rbx, -16
-	movq	%rdi, %rbx
-	testq	%rdi, %rdi
-	je	.LBB16_2
-# %bb.1:                                # %.3.if
-	movq	%rbx, %rdi
-	callq	List___init
-	movq	$NilVT, (%rbx)
-.LBB16_2:                               # %.3.endif
-	movq	%rbx, %rax
-	popq	%rbx
-	.cfi_def_cfa_offset 8
-	retq
-.Lfunc_end16:
-	.size	Nil___init, .Lfunc_end16-Nil___init
-	.cfi_endproc
-                                        # -- End function
-	.globl	Cons__init                      # -- Begin function Cons__init
-	.p2align	4, 0x90
-	.type	Cons__init,@function
-Cons__init:                             # @Cons__init
-	.cfi_startproc
-# %bb.0:                                # %.5
-	movq	%rdi, -24(%rsp)
-	movl	%esi, -4(%rsp)
-	movq	%rdx, -16(%rsp)
-	movl	%esi, 8(%rdi)
-	movq	-16(%rsp), %rax
-	movq	-24(%rsp), %rcx
-	movq	%rax, 16(%rcx)
-	movq	-24(%rsp), %rax
-	retq
-.Lfunc_end17:
-	.size	Cons__init, .Lfunc_end17-Cons__init
-	.cfi_endproc
-                                        # -- End function
-	.globl	Cons__head                      # -- Begin function Cons__head
-	.p2align	4, 0x90
-	.type	Cons__head,@function
-Cons__head:                             # @Cons__head
-	.cfi_startproc
-# %bb.0:                                # %.3
-	movq	%rdi, -8(%rsp)
-	movl	8(%rdi), %eax
-	retq
-.Lfunc_end18:
-	.size	Cons__head, .Lfunc_end18-Cons__head
-	.cfi_endproc
-                                        # -- End function
-	.globl	Cons__isNil                     # -- Begin function Cons__isNil
-	.p2align	4, 0x90
-	.type	Cons__isNil,@function
-Cons__isNil:                            # @Cons__isNil
-	.cfi_startproc
-# %bb.0:                                # %.3
-	movq	%rdi, -8(%rsp)
-	xorl	%eax, %eax
-	retq
-.Lfunc_end19:
-	.size	Cons__isNil, .Lfunc_end19-Cons__isNil
-	.cfi_endproc
-                                        # -- End function
-	.globl	Cons__length                    # -- Begin function Cons__length
-	.p2align	4, 0x90
-	.type	Cons__length,@function
-Cons__length:                           # @Cons__length
-	.cfi_startproc
-# %bb.0:                                # %.3
-	pushq	%rax
-	.cfi_def_cfa_offset 16
-	movq	%rdi, (%rsp)
-	movq	16(%rdi), %rdi
-	movq	(%rdi), %rax
-	callq	*56(%rax)
-	incl	%eax
-	popq	%rcx
-	.cfi_def_cfa_offset 8
-	retq
-.Lfunc_end20:
-	.size	Cons__length, .Lfunc_end20-Cons__length
-	.cfi_endproc
-                                        # -- End function
-	.globl	Cons___new                      # -- Begin function Cons___new
-	.p2align	4, 0x90
-	.type	Cons___new,@function
-Cons___new:                             # @Cons___new
-	.cfi_startproc
-# %bb.0:                                # %.2
-	pushq	%rax
-	.cfi_def_cfa_offset 16
-	movl	$24, %edi
-	callq	malloc
-	movq	%rax, %rdi
-	callq	Cons___init
-	popq	%rcx
-	.cfi_def_cfa_offset 8
-	retq
-.Lfunc_end21:
-	.size	Cons___new, .Lfunc_end21-Cons___new
-	.cfi_endproc
-                                        # -- End function
-	.globl	Cons___init                     # -- Begin function Cons___init
-	.p2align	4, 0x90
-	.type	Cons___init,@function
-Cons___init:                            # @Cons___init
-	.cfi_startproc
-# %bb.0:                                # %.3
-	pushq	%rbx
-	.cfi_def_cfa_offset 16
-	.cfi_offset %rbx, -16
-	movq	%rdi, %rbx
-	testq	%rdi, %rdi
-	je	.LBB22_2
-# %bb.1:                                # %.3.if
-	movq	%rbx, %rdi
-	callq	List___init
-	movq	$ConsVT, (%rbx)
-	movl	$0, 8(%rbx)
-	movq	$0, 16(%rbx)
-.LBB22_2:                               # %.3.endif
-	movq	%rbx, %rax
-	popq	%rbx
-	.cfi_def_cfa_offset 8
-	retq
-.Lfunc_end22:
-	.size	Cons___init, .Lfunc_end22-Cons___init
+.Lfunc_end13:
+	.size	MyClass___init, .Lfunc_end13-MyClass___init
 	.cfi_endproc
                                         # -- End function
 	.globl	main                            # -- Begin function main
@@ -697,89 +532,16 @@ Cons___init:                            # @Cons___init
 main:                                   # @main
 	.cfi_startproc
 # %bb.0:                                # %.3
-	pushq	%rbp
+	pushq	%rax
 	.cfi_def_cfa_offset 16
-	pushq	%r15
-	.cfi_def_cfa_offset 24
-	pushq	%r14
-	.cfi_def_cfa_offset 32
-	pushq	%r13
-	.cfi_def_cfa_offset 40
-	pushq	%r12
-	.cfi_def_cfa_offset 48
-	pushq	%rbx
-	.cfi_def_cfa_offset 56
-	subq	$24, %rsp
-	.cfi_def_cfa_offset 80
-	.cfi_offset %rbx, -56
-	.cfi_offset %r12, -48
-	.cfi_offset %r13, -40
-	.cfi_offset %r14, -32
-	.cfi_offset %r15, -24
-	.cfi_offset %rbp, -16
 	callq	Main___new
-	movq	%rax, 8(%rsp)
-	callq	Cons___new
-	movq	%rax, %r14
-	movq	(%rax), %rax
-	movq	64(%rax), %r12
-	callq	Cons___new
-	movq	%rax, %r15
-	movq	(%rax), %rax
-	movq	64(%rax), %r13
-	callq	Cons___new
-	movq	%rax, %rbx
-	movq	(%rax), %rax
-	movq	64(%rax), %rbp
-	callq	Nil___new
-	movq	%rbx, %rdi
-	movl	$2, %esi
-	movq	%rax, %rdx
-	callq	*%rbp
-	movq	%r15, %rdi
-	movl	$1, %esi
-	movq	%rax, %rdx
-	callq	*%r13
-	movq	%r14, %rdi
-	xorl	%esi, %esi
-	movq	%rax, %rdx
-	callq	*%r12
-	movq	%rax, 16(%rsp)
-	movq	8(%rsp), %rdi
-	movq	(%rdi), %rax
-	movl	$string, %esi
-	callq	*(%rax)
-	movq	8(%rsp), %rbx
-	movq	(%rbx), %rax
-	movq	16(%rax), %rbp
-	movq	16(%rsp), %rdi
-	movq	(%rdi), %rax
-	callq	*56(%rax)
-	movq	%rbx, %rdi
-	movl	%eax, %esi
-	callq	*%rbp
-	movq	8(%rsp), %rdi
-	movq	(%rdi), %rax
-	movl	$string.1, %esi
-	callq	*(%rax)
+	movq	%rax, (%rsp)
 	xorl	%eax, %eax
-	addq	$24, %rsp
-	.cfi_def_cfa_offset 56
-	popq	%rbx
-	.cfi_def_cfa_offset 48
-	popq	%r12
-	.cfi_def_cfa_offset 40
-	popq	%r13
-	.cfi_def_cfa_offset 32
-	popq	%r14
-	.cfi_def_cfa_offset 24
-	popq	%r15
-	.cfi_def_cfa_offset 16
-	popq	%rbp
+	popq	%rcx
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end23:
-	.size	main, .Lfunc_end23-main
+.Lfunc_end14:
+	.size	main, .Lfunc_end14-main
 	.cfi_endproc
                                         # -- End function
 	.globl	Main___new                      # -- Begin function Main___new
@@ -797,8 +559,8 @@ Main___new:                             # @Main___new
 	popq	%rcx
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end24:
-	.size	Main___new, .Lfunc_end24-Main___new
+.Lfunc_end15:
+	.size	Main___new, .Lfunc_end15-Main___new
 	.cfi_endproc
                                         # -- End function
 	.globl	Main___init                     # -- Begin function Main___init
@@ -812,18 +574,18 @@ Main___init:                            # @Main___init
 	.cfi_offset %rbx, -16
 	movq	%rdi, %rbx
 	testq	%rdi, %rdi
-	je	.LBB25_2
+	je	.LBB16_2
 # %bb.1:                                # %.3.if
 	movq	%rbx, %rdi
 	callq	Object___init
 	movq	$MainVT, (%rbx)
-.LBB25_2:                               # %.3.endif
+.LBB16_2:                               # %.3.endif
 	movq	%rbx, %rax
 	popq	%rbx
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end25:
-	.size	Main___init, .Lfunc_end25-Main___init
+.Lfunc_end16:
+	.size	Main___init, .Lfunc_end16-Main___init
 	.cfi_endproc
                                         # -- End function
 	.type	.str,@object                    # @.str
@@ -904,49 +666,18 @@ Object___vtable:
 	.quad	Object__inputInt32
 	.size	Object___vtable, 48
 
-	.type	ListVT,@object                  # @ListVT
-	.globl	ListVT
+	.type	MyClassVT,@object               # @MyClassVT
+	.globl	MyClassVT
 	.p2align	4
-ListVT:
+MyClassVT:
 	.quad	Object__print
 	.quad	Object__printBool
 	.quad	Object__printInt32
 	.quad	Object__inputLine
 	.quad	Object__inputBool
 	.quad	Object__inputInt32
-	.quad	List__isNil
-	.quad	List__length
-	.size	ListVT, 64
-
-	.type	NilVT,@object                   # @NilVT
-	.globl	NilVT
-	.p2align	4
-NilVT:
-	.quad	Object__print
-	.quad	Object__printBool
-	.quad	Object__printInt32
-	.quad	Object__inputLine
-	.quad	Object__inputBool
-	.quad	Object__inputInt32
-	.quad	List__isNil
-	.quad	List__length
-	.size	NilVT, 64
-
-	.type	ConsVT,@object                  # @ConsVT
-	.globl	ConsVT
-	.p2align	4
-ConsVT:
-	.quad	Object__print
-	.quad	Object__printBool
-	.quad	Object__printInt32
-	.quad	Object__inputLine
-	.quad	Object__inputBool
-	.quad	Object__inputInt32
-	.quad	Cons__isNil
-	.quad	Cons__length
-	.quad	Cons__init
-	.quad	Cons__head
-	.size	ConsVT, 80
+	.quad	MyClass__myMethod
+	.size	MyClassVT, 56
 
 	.type	MainVT,@object                  # @MainVT
 	.globl	MainVT
@@ -960,18 +691,5 @@ MainVT:
 	.quad	Object__inputInt32
 	.quad	main
 	.size	MainVT, 56
-
-	.type	string,@object                  # @string
-	.globl	string
-	.p2align	4
-string:
-	.asciz	"List has length "
-	.size	string, 17
-
-	.type	string.1,@object                # @string.1
-	.globl	string.1
-string.1:
-	.asciz	"\n"
-	.size	string.1, 2
 
 	.section	".note.GNU-stack","",@progbits
